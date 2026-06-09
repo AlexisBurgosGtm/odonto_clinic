@@ -16,7 +16,7 @@ export function renderLogin() {
           <div class="login-glass-glow"></div>
 
           <header class="login-header">
-            <img src="logo.jpeg" alt="Dentaf — Clínica dental familiar" class="login-logo-img">
+            <img src="favicon.png" alt="Dentaf — Clínica dental familiar" class="login-logo-img">
           </header>
 
           <div id="loginAlert"></div>
