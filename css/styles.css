@@ -407,31 +407,31 @@ body {
   letter-spacing: 0.02em;
 }
 
-.sidebar-footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--color-border);
-}
-
-.btn-logout {
-  display: flex;
+.btn-logout-topbar {
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.6rem 1rem;
-  border: 1.5px solid var(--color-border);
-  border-radius: 10px;
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-  font-weight: 500;
+  gap: 0.4rem;
+  margin-left: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border: 1.5px solid rgba(252, 165, 165, 0.5);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #dc2626;
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all var(--transition);
+  white-space: nowrap;
 }
 
-.btn-logout:hover {
+.btn-logout-topbar:hover {
   border-color: #fca5a5;
   background: #fef2f2;
-  color: #ef4444;
+  color: #b91c1c;
+}
+
+.btn-logout-topbar i {
+  font-size: 0.85rem;
 }
 
 /* ─── CONTENIDO PRINCIPAL ──────────────────── */
@@ -737,6 +737,16 @@ body {
   color: var(--color-text);
 }
 
+.config-option-card {
+  margin-bottom: 0;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.config-option-header h6 {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
 .placeholder-content {
   text-align: center;
   padding: 3rem 1rem;
@@ -830,6 +840,40 @@ body {
   color: #fff;
 }
 
+.btn-nuevo-fab {
+  position: fixed !important;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  left: auto;
+  top: auto;
+  z-index: 1050;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-success), var(--color-success-dark));
+  color: #fff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.btn-nuevo-fab:hover,
+.btn-nuevo-fab:focus {
+  color: #fff;
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 12px 32px rgba(16, 185, 129, 0.48);
+}
+
+.btn-nuevo-fab:active {
+  transform: translateY(-1px) scale(1);
+}
+
 .text-precio {
   font-weight: 600;
   color: var(--color-success-dark);
@@ -896,6 +940,85 @@ body {
 .badge-tipo-secretaria { background: #fef3c7; color: #d97706; }
 .badge-tipo-medico { background: #d1fae5; color: #059669; }
 .badge-tipo-default { background: #f1f5f9; color: #64748b; }
+.badge-tipo-abono { background: #d1fae5; color: #059669; }
+.badge-tipo-pago { background: #fee2e2; color: #dc2626; }
+
+.text-abono { color: #059669; }
+.text-pago { color: #dc2626; }
+
+.transacciones-header {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.transacciones-filtros,
+.empleados-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+}
+
+.transacciones-filtros > div,
+.empleados-filtros > div {
+  min-width: 220px;
+  flex: 1;
+  max-width: 360px;
+}
+
+.transacciones-filtros .form-label,
+.empleados-filtros .form-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.transacciones-actions {
+  white-space: nowrap;
+}
+
+.transacciones-actions .btn-action {
+  margin-left: 0.15rem;
+}
+
+.estado-cuenta-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  height: 100%;
+}
+
+.estado-cuenta-card-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.estado-cuenta-card-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.estado-cuenta-card-abono .estado-cuenta-card-value { color: #059669; }
+.estado-cuenta-card-pago .estado-cuenta-card-value { color: #dc2626; }
+.estado-cuenta-card-saldo .estado-cuenta-card-value { color: var(--color-primary-dark); }
+
+.estado-cuenta-leyenda {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin-bottom: 1rem;
+}
+
+.crud-table td.num {
+  text-align: right;
+  white-space: nowrap;
+}
 
 .badge-estado {
   display: inline-block;
@@ -1392,6 +1515,39 @@ body {
   flex-wrap: wrap;
 }
 
+.cumpleaneros-header {
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.cumpleaneros-fecha {
+  min-width: 180px;
+}
+
+.cumpleaneros-fecha .form-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.cumpleaneros-subtitle {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.btn-whatsapp {
+  background: #25d366;
+  border: 1px solid #25d366;
+  color: #fff;
+}
+
+.btn-whatsapp:hover {
+  background: #1ebe57;
+  border-color: #1ebe57;
+  color: #fff;
+}
+
 .swal2-popup.swal-popup-wide {
   max-width: 860px;
   padding: 1.75rem 2rem 1.5rem;
@@ -1648,5 +1804,14 @@ body {
 
   .topbar-user-name {
     display: none;
+  }
+
+  .btn-logout-topbar-text {
+    display: none;
+  }
+
+  .btn-logout-topbar {
+    margin-left: 0;
+    padding: 0.4rem 0.55rem;
   }
 }

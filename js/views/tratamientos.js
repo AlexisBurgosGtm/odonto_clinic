@@ -2,6 +2,7 @@ import { api } from '../services/api.js';
 import { showAlert, clearAlert } from '../utils/alerts.js';
 import { confirmAction, alertError, alertSuccess, openFormDialog } from '../utils/swal.js';
 import { sanitizeText } from '../utils/sanitize.js';
+import { mountNuevoFab } from '../utils/nuevo-fab.js';
 
 let tratamientos = [];
 
@@ -22,9 +23,6 @@ export function renderTratamientos() {
     <div class="content-card">
       <div class="content-card-header">
         <h5><i class="fa-solid fa-tooth me-2 text-primary"></i>Tratamientos disponibles</h5>
-        <button class="btn btn-sm btn-nuevo btn-rounded" id="btnNuevoTratamiento">
-          <i class="fa-solid fa-plus me-1"></i>Nuevo tratamiento
-        </button>
       </div>
 
       <div class="table-responsive">
@@ -189,7 +187,12 @@ async function handleDelete(id) {
 }
 
 export function bindTratamientos() {
-  document.getElementById('btnNuevoTratamiento')?.addEventListener('click', () => openTratamientoForm('create'));
+  mountNuevoFab({
+    id: 'btnNuevoTratamiento',
+    icon: 'fa-solid fa-plus',
+    title: 'Nuevo tratamiento',
+    onClick: () => openTratamientoForm('create'),
+  });
 
   document.getElementById('tratamientosTableBody')?.addEventListener('click', (e) => {
     const editBtn = e.target.closest('[data-edit]');

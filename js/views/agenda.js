@@ -357,7 +357,7 @@ function getAgendaRoleConfig() {
   }
 
   if (tipo === 'SECRETARIA') {
-    return { initialView: 'timeGridDay', lockMedico: false, codemp: null };
+    return { initialView: 'timeGridWeek', lockMedico: false, codemp: null };
   }
 
   return { initialView: 'dayGridMonth', lockMedico: false, codemp: null };

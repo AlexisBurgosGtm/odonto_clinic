@@ -1,11 +1,15 @@
 import { api } from '../services/api.js';
+import { getSession } from '../services/session.js';
 import { showAlert, clearAlert } from '../utils/alerts.js';
 import { confirmAction, alertError, alertSuccess, openFormDialog } from '../utils/swal.js';
 import { sanitizeText } from '../utils/sanitize.js';
+import { mountNuevoFab } from '../utils/nuevo-fab.js';
 
 const TIPOS = ['GERENTE', 'SECRETARIA', 'MEDICO'];
 
 let empleados = [];
+let empresas = [];
+let selectedEmpnit = '';
 
 export function renderEmpleados() {
   return `
@@ -14,9 +18,17 @@ export function renderEmpleados() {
     <div class="content-card">
       <div class="content-card-header">
         <h5><i class="fa-solid fa-user-doctor me-2 text-primary"></i>Personal de la clínica</h5>
-        <button class="btn btn-sm btn-nuevo btn-rounded" id="btnNuevoEmpleado">
-          <i class="fa-solid fa-user-plus me-1"></i>Nuevo empleado
-        </button>
+      </div>
+
+      <div class="empleados-filtros">
+        <div>
+          <label for="filtroEmpresaEmpleados" class="form-label">
+            <i class="fa-solid fa-building me-1 text-primary"></i>Empresa / Sucursal
+          </label>
+          <select id="filtroEmpresaEmpleados" class="form-select">
+            <option value="">Cargando empresas...</option>
+          </select>
+        </div>
       </div>
 
       <div class="table-responsive">
@@ -135,9 +147,25 @@ function renderTable() {
   `).join('');
 }
 
+function renderEmpresaFilter() {
+  const select = document.getElementById('filtroEmpresaEmpleados');
+  if (!select) return;
+
+  const session = getSession();
+
+  select.innerHTML = empresas.map((e) => `
+    <option value="${e.EMPNIT}">${e.EMPRESA || e.EMPNIT}</option>
+  `).join('');
+
+  selectedEmpnit = session?.empnit || empresas[0]?.EMPNIT || '';
+  select.value = selectedEmpnit;
+}
+
 async function loadEmpleados() {
+  if (!selectedEmpnit) return;
+
   try {
-    empleados = await api.empleados.list();
+    empleados = await api.empleados.list({ empnit: selectedEmpnit });
     renderTable();
     clearAlert('empleadosAlert');
   } catch (error) {
@@ -213,9 +241,9 @@ async function openEmpleadoForm(mode, empleado = null) {
 
       try {
         if (isEdit) {
-          await api.empleados.update(empleado.CODEMP, body);
+          await api.empleados.update(empleado.CODEMP, body, { empnit: empleado.EMPNIT });
         } else {
-          await api.empleados.create(body);
+          await api.empleados.create({ ...body, EMPNIT: selectedEmpnit });
         }
       } catch (error) {
         Swal.showValidationMessage(error.message);
@@ -256,7 +284,7 @@ async function handleToggleHabilitado(codemp) {
       USUARIO: empleado.USUARIO,
       COLOR: empleado.COLOR || '#0ea5e9',
       HABILITADO: nuevoEstado,
-    });
+    }, { empnit: empleado.EMPNIT });
 
     await loadEmpleados();
     await alertSuccess(
@@ -282,7 +310,7 @@ async function handleDelete(codemp) {
   if (!confirmed) return;
 
   try {
-    await api.empleados.delete(codemp);
+    await api.empleados.delete(codemp, { empnit: empleado?.EMPNIT || selectedEmpnit });
     await loadEmpleados();
     await alertSuccess('Empleado eliminado');
   } catch (error) {
@@ -291,7 +319,12 @@ async function handleDelete(codemp) {
 }
 
 export function bindEmpleados() {
-  document.getElementById('btnNuevoEmpleado')?.addEventListener('click', () => openEmpleadoForm('create'));
+  mountNuevoFab({
+    id: 'btnNuevoEmpleado',
+    icon: 'fa-solid fa-user-plus',
+    title: 'Nuevo empleado',
+    onClick: () => openEmpleadoForm('create'),
+  });
 
   document.getElementById('empleadosTableBody')?.addEventListener('click', (e) => {
     const toggleCell = e.target.closest('[data-toggle]');
@@ -313,5 +346,18 @@ export function bindEmpleados() {
     }
   });
 
-  loadEmpleados();
+  (async () => {
+    try {
+      empresas = await api.empresas.list();
+      renderEmpresaFilter();
+      await loadEmpleados();
+
+      document.getElementById('filtroEmpresaEmpleados')?.addEventListener('change', async (e) => {
+        selectedEmpnit = e.target.value;
+        await loadEmpleados();
+      });
+    } catch (error) {
+      showAlert('empleadosAlert', error.message);
+    }
+  })();
 }

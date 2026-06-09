@@ -70,6 +70,42 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/cumpleanos', async (req, res) => {
+  const empnit = getEmpnit(req, res);
+  if (!empnit) return;
+
+  const fecha = req.query.fecha || new Date().toISOString().slice(0, 10);
+  const partes = String(fecha).split('-');
+
+  if (partes.length !== 3) {
+    return res.status(400).json({ error: 'Fecha no válida' });
+  }
+
+  const mes = Number(partes[1]);
+  const dia = Number(partes[2]);
+
+  if (!mes || !dia || mes < 1 || mes > 12 || dia < 1 || dia > 31) {
+    return res.status(400).json({ error: 'Fecha no válida' });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT CODPACIENTE, NOMBRE, TELEFONOS, NACIMIENTO
+       FROM pacientes
+       WHERE EMPNIT = ?
+         AND NACIMIENTO IS NOT NULL
+         AND MONTH(NACIMIENTO) = ?
+         AND DAY(NACIMIENTO) = ?
+       ORDER BY NOMBRE`,
+      [empnit, mes, dia]
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al listar cumpleañeros:', error.message);
+    res.status(500).json({ error: 'Error al obtener cumpleañeros' });
+  }
+});
+
 router.get('/:codpaciente', async (req, res) => {
   const empnit = getEmpnit(req, res);
   if (!empnit) return;

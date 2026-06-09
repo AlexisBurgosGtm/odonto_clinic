@@ -41,16 +41,39 @@ export const api = {
   },
 
   empleados: {
-    list: () => request('/api/empleados'),
+    list: ({ empnit } = {}) => {
+      const params = new URLSearchParams();
+      if (empnit) params.set('empnit', empnit);
+      const qs = params.toString();
+      return request(`/api/empleados${qs ? `?${qs}` : ''}`);
+    },
     medicos: () => request('/api/empleados/medicos'),
     create: (body) => request('/api/empleados', { method: 'POST', body: JSON.stringify(body) }),
-    update: (codemp, body) =>
-      request(`/api/empleados/${codemp}`, { method: 'PUT', body: JSON.stringify(body) }),
-    delete: (codemp) => request(`/api/empleados/${codemp}`, { method: 'DELETE' }),
+    update: (codemp, body, { empnit } = {}) => {
+      const params = new URLSearchParams();
+      if (empnit) params.set('empnit', empnit);
+      const qs = params.toString();
+      return request(`/api/empleados/${codemp}${qs ? `?${qs}` : ''}`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      });
+    },
+    delete: (codemp, { empnit } = {}) => {
+      const params = new URLSearchParams();
+      if (empnit) params.set('empnit', empnit);
+      const qs = params.toString();
+      return request(`/api/empleados/${codemp}${qs ? `?${qs}` : ''}`, { method: 'DELETE' });
+    },
   },
 
   pacientes: {
     list: () => request('/api/pacientes'),
+    cumpleanos: (fecha) => {
+      const params = new URLSearchParams();
+      if (fecha) params.set('fecha', fecha);
+      const qs = params.toString();
+      return request(`/api/pacientes/cumpleanos${qs ? `?${qs}` : ''}`);
+    },
     get: (codpaciente) => request(`/api/pacientes/${codpaciente}`),
     create: (body) => request('/api/pacientes', { method: 'POST', body: JSON.stringify(body) }),
     update: (codpaciente, body) =>
@@ -86,6 +109,23 @@ export const api = {
     list: () => request('/api/piezas'),
   },
 
+  transacciones: {
+    list: ({ fechaInicio, fechaFin } = {}) => {
+      const params = new URLSearchParams();
+      if (fechaInicio) params.set('fechaInicio', fechaInicio);
+      if (fechaFin) params.set('fechaFin', fechaFin);
+      const qs = params.toString();
+      return request(`/api/transacciones${qs ? `?${qs}` : ''}`);
+    },
+    estadoCuenta: (codpaciente) =>
+      request(`/api/transacciones/paciente/${codpaciente}`),
+    create: (body) =>
+      request('/api/transacciones', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id, body) =>
+      request(`/api/transacciones/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    delete: (id) => request(`/api/transacciones/${id}`, { method: 'DELETE' }),
+  },
+
   orders: {
     listByPaciente: (codpaciente) => request(`/api/orders/paciente/${codpaciente}`),
     create: (body) => request('/api/orders', { method: 'POST', body: JSON.stringify(body) }),
@@ -104,5 +144,14 @@ export const api = {
       const qs = params.toString();
       return request(`/api/dashboard/stats${qs ? `?${qs}` : ''}`);
     },
+  },
+
+  config: {
+    get: (tipo) => request(`/api/config/${encodeURIComponent(tipo)}`),
+    update: (tipo, body) =>
+      request(`/api/config/${encodeURIComponent(tipo)}`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
   },
 };

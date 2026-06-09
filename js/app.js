@@ -11,28 +11,40 @@ import { renderLogin, bindLoginEvents } from './views/login.js';
 import { renderDashboard, bindDashboard } from './views/dashboard.js';
 import { renderAgenda, bindAgenda, cleanupAgenda } from './views/agenda.js';
 import { renderPacientes, bindPacientes } from './views/pacientes.js';
+import { renderCumpleaneros, bindCumpleaneros } from './views/cumpleaneros.js';
 import { renderPacienteTratamientos, bindPacienteTratamientos } from './views/paciente-tratamientos.js';
 import { renderTratamientos, bindTratamientos } from './views/tratamientos.js';
+import { renderTransacciones, bindTransacciones } from './views/transacciones.js';
+import { renderPacienteEstadoCuenta, bindPacienteEstadoCuenta } from './views/paciente-estado-cuenta.js';
 import { renderEmpleados, bindEmpleados } from './views/empleados.js';
 import { renderEmpresas, bindEmpresas } from './views/empresas.js';
-import { renderConfiguraciones } from './views/configuraciones.js';
-import { alertError } from './utils/swal.js';
+import { renderConfiguraciones, bindConfiguraciones } from './views/configuraciones.js';
+import { alertError, confirmAction } from './utils/swal.js';
+import { removeNuevoFab } from './utils/nuevo-fab.js';
 
 /* ─── Mapa de rutas → renderers ────────────── */
 const routes = {
   '/dashboard':       { title: 'Inicio',          render: renderDashboard, bind: bindDashboard },
   '/agenda':          { title: 'Agenda',          render: renderAgenda, bind: bindAgenda },
   '/pacientes':       { title: 'Pacientes',       render: renderPacientes, bind: bindPacientes },
+  '/cumpleaneros':    { title: 'Cumpleañeros',    render: renderCumpleaneros, bind: bindCumpleaneros },
   '/pacientes/:codpaciente/tratamientos': {
     title: 'Tratamientos del paciente',
     getTitle: (params) => `Tratamientos — Paciente #${params.codpaciente || ''}`,
     render: renderPacienteTratamientos,
     bind: bindPacienteTratamientos,
   },
+  '/pacientes/:codpaciente/estado-cuenta': {
+    title: 'Estado de cuenta',
+    getTitle: (params) => `Estado de cuenta — Paciente #${params.codpaciente || ''}`,
+    render: renderPacienteEstadoCuenta,
+    bind: bindPacienteEstadoCuenta,
+  },
+  '/transacciones':   { title: 'Transacciones',   render: renderTransacciones, bind: bindTransacciones },
   '/tratamientos':    { title: 'Tratamientos',    render: renderTratamientos, bind: bindTratamientos },
   '/empleados':       { title: 'Empleados',       render: renderEmpleados, bind: bindEmpleados },
   '/empresas':        { title: 'Empresas',        render: renderEmpresas, bind: bindEmpresas },
-  '/configuraciones': { title: 'Configuraciones', render: renderConfiguraciones },
+  '/configuraciones': { title: 'Configuraciones', render: renderConfiguraciones, bind: bindConfiguraciones },
 };
 
 let router = null;
@@ -75,13 +87,6 @@ function renderLayout() {
       <nav class="sidebar-nav" id="sidebarNav">
         ${navCards}
       </nav>
-
-      <div class="sidebar-footer">
-        <button class="btn-logout" id="btnLogout">
-          <i class="fa-solid fa-right-from-bracket"></i>
-          Cerrar sesión
-        </button>
-      </div>
     </aside>
 
     <div class="main-content">
@@ -95,6 +100,10 @@ function renderLayout() {
             <i class="fa-solid fa-user"></i>
           </div>
           <span class="topbar-user-name">${session?.empleado || 'Usuario'}</span>
+          <button class="btn-logout-topbar" id="btnLogout" type="button" title="Cerrar sesión">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span class="btn-logout-topbar-text">Cerrar sesión</span>
+          </button>
         </div>
       </header>
 
@@ -138,8 +147,23 @@ function bindLayoutEvents() {
   });
 
   btnLogout?.addEventListener('click', () => {
-    logout();
+    requestLogout();
   });
+}
+
+async function requestLogout() {
+  const confirmed = await confirmAction({
+    title: '¿Cerrar sesión?',
+    text: '¿Desea salir del sistema?',
+    icon: 'question',
+    confirmText: 'Salir',
+    cancelText: 'Cancelar',
+    confirmColor: 'danger',
+  });
+
+  if (!confirmed) return;
+
+  logout();
 }
 
 /* ─── Router e inyección de vistas ─────────── */
@@ -170,6 +194,7 @@ function renderView(route, path, params = {}) {
 
     cleanupAgenda();
     document.getElementById('btnPrintOrders')?.remove();
+    removeNuevoFab();
     container.innerHTML = `<div class="view-enter" data-view-gen="${viewGen}">${route.render(params)}</div>`;
 
     const topbarTitle = document.getElementById('topbarTitle');

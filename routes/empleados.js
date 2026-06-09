@@ -14,6 +14,33 @@ function getEmpnit(req, res) {
   return empnit;
 }
 
+async function resolveTargetEmpnit(req, res, sessionEmpnit) {
+  const target = req.query.empnit?.trim() || req.body?.EMPNIT?.trim() || sessionEmpnit;
+
+  if (!target) {
+    res.status(400).json({ error: 'Empresa no especificada' });
+    return null;
+  }
+
+  try {
+    const [rows] = await pool.query(
+      'SELECT EMPNIT FROM empresas WHERE EMPNIT = ?',
+      [target]
+    );
+
+    if (rows.length === 0) {
+      res.status(400).json({ error: 'Empresa no válida' });
+      return null;
+    }
+
+    return target;
+  } catch (error) {
+    console.error('Error al validar empresa:', error.message);
+    res.status(500).json({ error: 'Error al validar la empresa' });
+    return null;
+  }
+}
+
 router.get('/medicos', async (req, res) => {
   const empnit = getEmpnit(req, res);
   if (!empnit) return;
@@ -37,13 +64,16 @@ router.get('/', async (req, res) => {
   const empnit = getEmpnit(req, res);
   if (!empnit) return;
 
+  const targetEmpnit = await resolveTargetEmpnit(req, res, empnit);
+  if (!targetEmpnit) return;
+
   try {
     const [rows] = await pool.query(
       `SELECT CODEMP, EMPNIT, EMPLEADO, TELEFONO, TIPO, USUARIO, HABILITADO, COLOR
        FROM empleados
        WHERE EMPNIT = ?
        ORDER BY EMPLEADO`,
-      [empnit]
+      [targetEmpnit]
     );
     res.json(rows);
   } catch (error) {
@@ -56,12 +86,15 @@ router.get('/:codemp', async (req, res) => {
   const empnit = getEmpnit(req, res);
   if (!empnit) return;
 
+  const targetEmpnit = await resolveTargetEmpnit(req, res, empnit);
+  if (!targetEmpnit) return;
+
   try {
     const [rows] = await pool.query(
       `SELECT CODEMP, EMPNIT, EMPLEADO, TELEFONO, TIPO, USUARIO, HABILITADO, COLOR
        FROM empleados
        WHERE CODEMP = ? AND EMPNIT = ?`,
-      [req.params.codemp, empnit]
+      [req.params.codemp, targetEmpnit]
     );
 
     if (rows.length === 0) {
@@ -78,6 +111,9 @@ router.get('/:codemp', async (req, res) => {
 router.post('/', async (req, res) => {
   const empnit = getEmpnit(req, res);
   if (!empnit) return;
+
+  const targetEmpnit = await resolveTargetEmpnit(req, res, empnit);
+  if (!targetEmpnit) return;
 
   const { EMPLEADO, TELEFONO, TIPO, USUARIO, CLAVE, HABILITADO, COLOR } = req.body;
 
@@ -113,7 +149,7 @@ router.post('/', async (req, res) => {
       `INSERT INTO empleados (EMPNIT, EMPLEADO, TELEFONO, TIPO, USUARIO, CLAVE, HABILITADO, COLOR)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        empnit,
+        targetEmpnit,
         EMPLEADO.trim(),
         TELEFONO?.trim() || null,
         TIPO || null,
@@ -126,7 +162,7 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({
       CODEMP: result.insertId,
-      EMPNIT: empnit,
+      EMPNIT: targetEmpnit,
       EMPLEADO: EMPLEADO.trim(),
       TELEFONO: TELEFONO?.trim() || null,
       TIPO: TIPO || null,
@@ -143,6 +179,9 @@ router.post('/', async (req, res) => {
 router.put('/:codemp', async (req, res) => {
   const empnit = getEmpnit(req, res);
   if (!empnit) return;
+
+  const targetEmpnit = await resolveTargetEmpnit(req, res, empnit);
+  if (!targetEmpnit) return;
 
   const { EMPLEADO, TELEFONO, TIPO, USUARIO, CLAVE, HABILITADO, COLOR } = req.body;
 
@@ -162,7 +201,7 @@ router.put('/:codemp', async (req, res) => {
         `SELECT CODEMP FROM empleados
          WHERE USUARIO IS NOT NULL AND LOWER(TRIM(USUARIO)) = LOWER(?)
            AND NOT (CODEMP = ? AND EMPNIT = ?)`,
-        [usuario, req.params.codemp, empnit]
+        [usuario, req.params.codemp, targetEmpnit]
       );
 
       if (duplicado.length > 0) {
@@ -193,7 +232,7 @@ router.put('/:codemp', async (req, res) => {
       values.push(CLAVE);
     }
 
-    values.push(req.params.codemp, empnit);
+    values.push(req.params.codemp, targetEmpnit);
 
     const [result] = await pool.query(
       `UPDATE empleados SET ${fields.join(', ')} WHERE CODEMP = ? AND EMPNIT = ?`,
@@ -215,10 +254,13 @@ router.delete('/:codemp', async (req, res) => {
   const empnit = getEmpnit(req, res);
   if (!empnit) return;
 
+  const targetEmpnit = await resolveTargetEmpnit(req, res, empnit);
+  if (!targetEmpnit) return;
+
   try {
     const [result] = await pool.query(
       'DELETE FROM empleados WHERE CODEMP = ? AND EMPNIT = ?',
-      [req.params.codemp, empnit]
+      [req.params.codemp, targetEmpnit]
     );
 
     if (result.affectedRows === 0) {

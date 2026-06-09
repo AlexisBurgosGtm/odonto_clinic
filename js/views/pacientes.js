@@ -3,6 +3,7 @@ import { getSession } from '../services/session.js';
 import { showAlert, clearAlert } from '../utils/alerts.js';
 import { confirmAction, alertError, alertSuccess, openFormDialog, SwalTheme } from '../utils/swal.js';
 import { sanitizeText } from '../utils/sanitize.js';
+import { mountNuevoFab } from '../utils/nuevo-fab.js';
 
 let pacientes = [];
 let filtroBusqueda = '';
@@ -213,11 +214,6 @@ export function renderPacientes() {
     <div class="content-card view-pacientes">
       <div class="content-card-header">
         <h5><i class="fa-solid fa-users me-2 text-primary"></i>Listado de pacientes</h5>
-        ${isMedico ? '' : `
-        <button class="btn btn-sm btn-nuevo btn-rounded" id="btnNuevoPaciente">
-          <i class="fa-solid fa-user-plus me-1"></i>Nuevo paciente
-        </button>
-        `}
       </div>
 
       <div class="table-toolbar">
@@ -242,7 +238,7 @@ export function renderPacientes() {
               <th>Dirección</th>
               <th>Teléfonos</th>
               <th>Email</th>
-              <th class="text-end" style="width: 240px;">Acciones</th>
+              <th class="text-end" style="width: 280px;">Acciones</th>
             </tr>
           </thead>
           <tbody id="pacientesTableBody">
@@ -386,6 +382,9 @@ function renderTable() {
         <button class="btn btn-sm btn-outline-info btn-action" data-tratamientos="${p.CODPACIENTE}" title="Tratamientos">
           <i class="fa-solid fa-tooth"></i>
         </button>
+        <button class="btn btn-sm btn-outline-warning btn-action" data-estado-cuenta="${p.CODPACIENTE}" title="Estado de cuenta">
+          <i class="fa-solid fa-file-invoice-dollar"></i>
+        </button>
         ${isMedico ? '' : `
         <button class="btn btn-sm btn-outline-primary btn-action" data-edit="${p.CODPACIENTE}" title="Editar">
           <i class="fa-solid fa-pen"></i>
@@ -504,7 +503,14 @@ async function handleDelete(codpaciente) {
 }
 
 export function bindPacientes() {
-  document.getElementById('btnNuevoPaciente')?.addEventListener('click', () => openPacienteForm('create'));
+  if (getSession()?.tipo !== 'MEDICO') {
+    mountNuevoFab({
+      id: 'btnNuevoPaciente',
+      icon: 'fa-solid fa-user-plus',
+      title: 'Nuevo paciente',
+      onClick: () => openPacienteForm('create'),
+    });
+  }
 
   document.getElementById('pacientesSearch')?.addEventListener('input', (e) => {
     filtroBusqueda = e.target.value;
@@ -514,6 +520,7 @@ export function bindPacientes() {
   document.getElementById('pacientesTableBody')?.addEventListener('click', (e) => {
     const viewBtn = e.target.closest('[data-view]');
     const tratamientosBtn = e.target.closest('[data-tratamientos]');
+    const estadoCuentaBtn = e.target.closest('[data-estado-cuenta]');
     const editBtn = e.target.closest('[data-edit]');
     const deleteBtn = e.target.closest('[data-delete]');
 
@@ -525,6 +532,11 @@ export function bindPacientes() {
 
     if (tratamientosBtn) {
       window.location.hash = `#/pacientes/${tratamientosBtn.dataset.tratamientos}/tratamientos`;
+      return;
+    }
+
+    if (estadoCuentaBtn) {
+      window.location.hash = `#/pacientes/${estadoCuentaBtn.dataset.estadoCuenta}/estado-cuenta`;
       return;
     }
 
