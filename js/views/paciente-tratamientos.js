@@ -3,6 +3,7 @@ import { getSession } from '../services/session.js';
 import { showAlert, clearAlert } from '../utils/alerts.js';
 import { confirmAction, alertError, alertSuccess, openFormDialog } from '../utils/swal.js';
 import { sanitizeText } from '../utils/sanitize.js';
+import { isViewMounted } from '../utils/view.js';
 
 let codpacienteActual = null;
 let pacienteActual = null;
@@ -551,13 +552,15 @@ function renderOrdersTable() {
   updateTotalDisplay();
 }
 
-async function loadData() {
+async function loadData(viewGen) {
   [pacienteActual, orders, productos, piezas] = await Promise.all([
     api.pacientes.get(codpacienteActual),
     api.orders.listByPaciente(codpacienteActual),
     api.productos.list(),
     api.piezas.list(),
   ]);
+
+  if (viewGen && !isViewMounted(viewGen)) return;
 
   const nombreEl = document.getElementById('pacienteTratamientosNombre');
   if (nombreEl) {
@@ -898,8 +901,10 @@ export async function bindPacienteTratamientos(params = {}) {
   });
 
   try {
-    await loadData();
+    await loadData(params.viewGen);
   } catch (error) {
-    showAlert('pacienteTratamientosAlert', error.message);
+    if (!params.viewGen || isViewMounted(params.viewGen)) {
+      showAlert('pacienteTratamientosAlert', error.message);
+    }
   }
 }

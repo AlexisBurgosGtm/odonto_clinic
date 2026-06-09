@@ -1,12 +1,37 @@
 import { api } from '../services/api.js';
 import { getSession } from '../services/session.js';
-import { confirmAction, alertError, alertSuccess, openFormDialog } from '../utils/swal.js';
+import { confirmAction, alertError, alertSuccess, openFormDialog, SwalTheme } from '../utils/swal.js';
 import { sanitizeText } from '../utils/sanitize.js';
+import { isViewMounted } from '../utils/view.js';
 
 let calendar = null;
 let medicos = [];
 let pacientes = [];
 let filtroMedico = '';
+let bindAbort = null;
+let selectedDate = new Date().toISOString().slice(0, 10);
+
+const HORAS_INICIO = 7 * 60;
+const HORAS_FIN = 18 * 60;
+const HORAS_INTERVALO = 30;
+
+function isAgendaMounted() {
+  return Boolean(document.getElementById('calendar'));
+}
+
+export function cleanupAgenda() {
+  bindAbort?.abort();
+  bindAbort = null;
+
+  if (calendar) {
+    try {
+      calendar.destroy();
+    } catch (_) {
+      /* el DOM ya pudo haberse eliminado */
+    }
+    calendar = null;
+  }
+}
 
 function splitDatetime(fecha) {
   if (!fecha) return { date: '', time: '' };
@@ -57,6 +82,187 @@ function addMinutesToTime(time, minutes) {
   const nh = Math.floor(total / 60) % 24;
   const nm = total % 60;
   return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`;
+}
+
+function timeToMinutes(time) {
+  if (!time) return 0;
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function minutesToTime(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function formatFechaDisplay(fecha) {
+  const { date } = splitDatetime(fecha);
+  if (!date) return fecha;
+  const [y, m, d] = date.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function getMedicosListaHoras() {
+  return filtroMedico
+    ? medicos.filter((m) => m.CODEMP == filtroMedico)
+    : medicos;
+}
+
+function getEventoRangoMinutos(evento, fecha) {
+  const inicio = splitDatetime(evento.FECHA);
+  if (inicio.date !== fecha) return null;
+
+  const fin = splitDatetime(evento.FECHA_FIN);
+  const startMin = Math.max(timeToMinutes(inicio.time), HORAS_INICIO);
+  let endMin = fin.time ? timeToMinutes(fin.time) : startMin + HORAS_INTERVALO;
+
+  if (fin.date && fin.date !== fecha) {
+    endMin = HORAS_FIN;
+  }
+
+  endMin = Math.min(endMin, HORAS_FIN);
+  if (endMin <= startMin) return null;
+
+  return { start: startMin, end: endMin };
+}
+
+function calcularHorariosDia(eventos, fecha) {
+  const ocupados = eventos
+    .map((e) => getEventoRangoMinutos(e, fecha))
+    .filter(Boolean)
+    .sort((a, b) => a.start - b.start);
+
+  const slots = [];
+
+  for (let min = HORAS_INICIO; min < HORAS_FIN; min += HORAS_INTERVALO) {
+    const finSlot = min + HORAS_INTERVALO;
+    if (finSlot > HORAS_FIN) break;
+
+    const solapa = ocupados.some((o) => min < o.end && finSlot > o.start);
+    slots.push({
+      label: `${minutesToTime(min)} – ${minutesToTime(finSlot)}`,
+      ocupado: solapa,
+    });
+  }
+
+  return slots;
+}
+
+function buildHorasDisponiblesContent(fecha, medicosLista, eventos) {
+  if (medicosLista.length === 0) {
+    return '<p class="text-muted mb-0">No hay médicos habilitados para consultar.</p>';
+  }
+
+  return medicosLista.map((medico) => {
+    const eventosMedico = eventos.filter((e) => e.CODEMP == medico.CODEMP);
+    const slots = calcularHorariosDia(eventosMedico, fecha);
+
+    const items = slots.map((slot) => `
+      <li class="${slot.ocupado ? 'horas-slot-ocupado' : 'horas-slot-libre'}">${slot.label}</li>
+    `).join('');
+
+    return `
+      <div class="horas-disponibles-grupo">
+        <h6 class="horas-disponibles-medico">
+          <span class="color-swatch" style="background:${medico.COLOR || '#0ea5e9'}"></span>
+          ${medico.EMPLEADO}
+        </h6>
+        <ul class="horas-disponibles-lista">${items}</ul>
+      </div>
+    `;
+  }).join('');
+}
+
+function buildHorasDisponiblesShell(fecha, medicosLista) {
+  const filtroLabel = medicosLista.length === 1
+    ? medicosLista[0].EMPLEADO
+    : 'Todos los médicos';
+
+  return `
+    <div class="horas-disponibles-modal">
+      <div class="horas-disponibles-toolbar">
+        <div class="horas-disponibles-fecha">
+          <label for="horasDisponiblesFecha" class="form-label">Fecha</label>
+          <input type="date" id="horasDisponiblesFecha" class="form-control" value="${fecha}">
+        </div>
+        <div class="horas-disponibles-info">
+          <p class="horas-disponibles-meta mb-1">
+            <span id="horasDisponiblesFechaLabel">${formatFechaDisplay(fecha)}</span>
+            · ${filtroLabel} · 7:00 a.m. – 6:00 p.m.
+          </p>
+          <div class="horas-disponibles-leyenda">
+            <span class="horas-leyenda-item horas-slot-libre">Disponible</span>
+            <span class="horas-leyenda-item horas-slot-ocupado">Ocupado</span>
+          </div>
+        </div>
+      </div>
+      <div class="horas-disponibles-scroll" id="horasDisponiblesContent">
+        <p class="text-muted mb-0 horas-disponibles-loading">Cargando horarios...</p>
+      </div>
+    </div>
+  `;
+}
+
+async function renderHorasDisponiblesContent(fecha) {
+  const content = document.getElementById('horasDisponiblesContent');
+  const fechaLabel = document.getElementById('horasDisponiblesFechaLabel');
+  if (!content) return;
+
+  if (fechaLabel) {
+    fechaLabel.textContent = formatFechaDisplay(fecha);
+  }
+
+  content.innerHTML = '<p class="text-muted mb-0 horas-disponibles-loading">Cargando horarios...</p>';
+
+  try {
+    const medicosLista = getMedicosListaHoras();
+    const eventos = await api.agenda.list(`${fecha} 00:00:00`, `${fecha} 23:59:59`);
+
+    if (!document.getElementById('horasDisponiblesContent')) return;
+
+    content.innerHTML = buildHorasDisponiblesContent(fecha, medicosLista, eventos);
+  } catch (error) {
+    if (document.getElementById('horasDisponiblesContent')) {
+      content.innerHTML = `<p class="text-danger mb-0">${error.message}</p>`;
+    }
+  }
+}
+
+async function openHorasDisponiblesModal() {
+  if (medicos.length === 0) {
+    await alertError('No hay médicos habilitados registrados');
+    return;
+  }
+
+  const fecha = new Date().toISOString().slice(0, 10);
+  const medicosLista = getMedicosListaHoras();
+
+  await SwalTheme.fire({
+    title: 'Horas disponibles',
+    html: buildHorasDisponiblesShell(fecha, medicosLista),
+    width: '860px',
+    customClass: {
+      popup: 'swal-popup swal-popup-wide',
+      title: 'swal-title',
+      htmlContainer: 'swal-html',
+      confirmButton: 'btn btn-swal-confirm',
+      actions: 'swal-actions',
+      icon: 'swal-icon',
+    },
+    confirmButtonText: 'Cerrar',
+    showCancelButton: false,
+    didOpen: () => {
+      const fechaInput = document.getElementById('horasDisponiblesFecha');
+      renderHorasDisponiblesContent(fecha);
+
+      fechaInput?.addEventListener('change', () => {
+        if (fechaInput.value) {
+          renderHorasDisponiblesContent(fechaInput.value);
+        }
+      });
+    },
+  });
 }
 
 function calcEdad(nacimiento, refDate) {
@@ -321,9 +527,13 @@ async function loadCatalogos() {
 }
 
 async function fetchEventos(info) {
+  if (!isAgendaMounted()) return [];
+
   const start = info?.startStr || null;
   const end = info?.endStr || null;
   const eventos = await api.agenda.list(start, end);
+
+  if (!isAgendaMounted()) return [];
   const filtrados = filtroMedico
     ? eventos.filter((e) => e.CODEMP == filtroMedico)
     : eventos;
@@ -347,8 +557,11 @@ function renderFiltroMedico() {
 }
 
 function setDefaultHoras(horaInicio = '09:00') {
-  document.getElementById('swal-hora').value = horaInicio;
-  document.getElementById('swal-hora-fin').value = addMinutesToTime(horaInicio, 30);
+  const hora = document.getElementById('swal-hora');
+  const horaFin = document.getElementById('swal-hora-fin');
+  if (!hora || !horaFin) return;
+  hora.value = horaInicio;
+  horaFin.value = addMinutesToTime(horaInicio, 30);
 }
 
 async function openEventoForm(mode, evento = null, fechaDefault = null) {
@@ -492,9 +705,14 @@ export function renderAgenda() {
     <div class="content-card">
       <div class="content-card-header">
         <h5><i class="fa-solid fa-calendar-days me-2 text-primary"></i>Calendario de citas</h5>
-        <button class="btn btn-sm btn-nuevo btn-rounded" id="btnNuevaCita">
-          <i class="fa-solid fa-plus me-1"></i>Nueva cita
-        </button>
+        <div class="agenda-header-actions">
+          <button class="btn btn-sm btn-outline-primary btn-rounded" id="btnHorasDisponibles" type="button">
+            <i class="fa-solid fa-clock me-1"></i>Horas disponibles
+          </button>
+          <button class="btn btn-sm btn-nuevo btn-rounded" id="btnNuevaCita" type="button">
+            <i class="fa-solid fa-plus me-1"></i>Nueva cita
+          </button>
+        </div>
       </div>
       <div class="agenda-filtros">
         <label for="filtroMedico" class="agenda-filtro-label">
@@ -511,10 +729,17 @@ export function renderAgenda() {
 
 function initCalendar(initialView = 'dayGridMonth') {
   const el = document.getElementById('calendar');
-  if (!el || typeof FullCalendar === 'undefined') return;
+  if (!el || typeof FullCalendar === 'undefined') {
+    cleanupAgenda();
+    return;
+  }
 
   if (calendar) {
-    calendar.destroy();
+    try {
+      calendar.destroy();
+    } catch (_) {
+      /* ignorar si el nodo ya no existe */
+    }
     calendar = null;
   }
 
@@ -539,6 +764,11 @@ function initCalendar(initialView = 'dayGridMonth') {
     slotMinTime: '07:00:00',
     slotMaxTime: '20:00:00',
     events: fetchEventos,
+    datesSet(info) {
+      if (info.view.type === 'timeGridDay') {
+        selectedDate = info.startStr.slice(0, 10);
+      }
+    },
     eventDidMount(info) {
       const color = info.event.extendedProps.COLOR || info.event.borderColor || '#0ea5e9';
       info.el.style.borderLeft = `4px solid ${color}`;
@@ -547,6 +777,7 @@ function initCalendar(initialView = 'dayGridMonth') {
       info.el.style.borderLeftWidth = '4px';
     },
     dateClick(info) {
+      selectedDate = info.dateStr.slice(0, 10);
       const fecha = info.dateStr.length <= 10
         ? `${info.dateStr} 09:00:00`
         : info.dateStr.replace('T', ' ').slice(0, 19);
@@ -556,6 +787,7 @@ function initCalendar(initialView = 'dayGridMonth') {
       const props = { ...info.event.extendedProps };
       if (info.event.start) {
         const inicio = splitDatetime(info.event.start);
+        if (inicio.date) selectedDate = inicio.date;
         props.FECHA = combineDatetime(inicio.date, inicio.time);
       }
       if (info.event.end) {
@@ -569,10 +801,20 @@ function initCalendar(initialView = 'dayGridMonth') {
   calendar.render();
 }
 
-export async function bindAgenda() {
+export async function bindAgenda(params = {}) {
+  const { viewGen } = params;
+
+  cleanupAgenda();
+  bindAbort = new AbortController();
+  const { signal } = bindAbort;
+  selectedDate = new Date().toISOString().slice(0, 10);
+
   try {
     const roleConfig = getAgendaRoleConfig();
     await loadCatalogos();
+
+    if (signal.aborted || !isAgendaMounted()) return;
+    if (viewGen && !isViewMounted(viewGen)) return;
 
     const filtroContainer = document.querySelector('.agenda-filtros');
 
@@ -587,13 +829,24 @@ export async function bindAgenda() {
 
     initCalendar(roleConfig.initialView);
 
+    if (signal.aborted || !isAgendaMounted()) return;
+    if (viewGen && !isViewMounted(viewGen)) return;
+
     document.getElementById('filtroMedico')?.addEventListener('change', (e) => {
       filtroMedico = e.target.value;
       calendar?.refetchEvents();
-    });
+    }, { signal });
 
-    document.getElementById('btnNuevaCita')?.addEventListener('click', () => openEventoForm('create'));
+    document.getElementById('btnHorasDisponibles')?.addEventListener('click', () => {
+      openHorasDisponiblesModal();
+    }, { signal });
+
+    document.getElementById('btnNuevaCita')?.addEventListener('click', () => {
+      openEventoForm('create');
+    }, { signal });
   } catch (error) {
+    if (signal.aborted) return;
+    if (viewGen && !isViewMounted(viewGen)) return;
     await alertError(error.message);
   }
 }

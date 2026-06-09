@@ -1,6 +1,7 @@
 import { api } from '../services/api.js';
 import { getSession } from '../services/session.js';
 import { alertError } from '../utils/swal.js';
+import { isViewMounted } from '../utils/view.js';
 
 let empresas = [];
 let selectedEmpnit = '';
@@ -26,12 +27,21 @@ function formatHora(fecha) {
 }
 
 function renderStats(stats) {
-  document.getElementById('statIngresos').textContent = formatPrecio(stats.ingresos_dia);
-  document.getElementById('statCitas').textContent = stats.citas_hoy;
-  document.getElementById('statPacientes').textContent = stats.pacientes.toLocaleString('es-CO');
-  document.getElementById('statPendientes').textContent = stats.tratamientos_pendientes;
-  document.getElementById('statEmpleados').textContent = stats.empleados_activos;
-  document.getElementById('dashboardFechaLabel').textContent = stats.fecha;
+  const statIngresos = document.getElementById('statIngresos');
+  const statCitas = document.getElementById('statCitas');
+  const statPacientes = document.getElementById('statPacientes');
+  const statPendientes = document.getElementById('statPendientes');
+  const statEmpleados = document.getElementById('statEmpleados');
+  const fechaLabel = document.getElementById('dashboardFechaLabel');
+
+  if (!statIngresos) return;
+
+  statIngresos.textContent = formatPrecio(stats.ingresos_dia);
+  if (statCitas) statCitas.textContent = stats.citas_hoy;
+  if (statPacientes) statPacientes.textContent = stats.pacientes.toLocaleString('es-CO');
+  if (statPendientes) statPendientes.textContent = stats.tratamientos_pendientes;
+  if (statEmpleados) statEmpleados.textContent = stats.empleados_activos;
+  if (fechaLabel) fechaLabel.textContent = stats.fecha;
 
   const citasBody = document.getElementById('citasDiaBody');
   if (citasBody) {
@@ -73,11 +83,12 @@ function renderStats(stats) {
   }
 }
 
-async function loadDashboard() {
+async function loadDashboard(viewGen) {
   const stats = await api.dashboard.stats({
     empnit: selectedEmpnit || getSession()?.empnit,
     fecha: selectedFecha,
   });
+  if (viewGen && !isViewMounted(viewGen)) return;
   renderStats(stats);
 }
 
@@ -221,22 +232,29 @@ export function renderDashboard() {
   `;
 }
 
-export async function bindDashboard() {
+export async function bindDashboard(params = {}) {
+  const { viewGen } = params;
+
   try {
     empresas = await api.empresas.list();
+    if (viewGen && !isViewMounted(viewGen)) return;
+
     renderEmpresaFilter();
-    await loadDashboard();
+    await loadDashboard(viewGen);
+    if (viewGen && !isViewMounted(viewGen)) return;
 
     document.getElementById('filtroEmpresa')?.addEventListener('change', async (e) => {
       selectedEmpnit = e.target.value;
-      await loadDashboard();
+      await loadDashboard(viewGen);
     });
 
     document.getElementById('filtroFecha')?.addEventListener('change', async (e) => {
       selectedFecha = e.target.value;
-      await loadDashboard();
+      await loadDashboard(viewGen);
     });
   } catch (error) {
-    await alertError(error.message);
+    if (!viewGen || isViewMounted(viewGen)) {
+      await alertError(error.message);
+    }
   }
 }
