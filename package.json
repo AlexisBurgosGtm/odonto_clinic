@@ -1,0 +1,28 @@
+{
+  "name": "clinica-dental",
+  "version": "1.0.0",
+  "description": "Sistema de gestión para clínica dental — SPA con vanilla JS",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "nodemon server.js",
+    "stop": "node scripts/stop.js",
+    "icons": "node scripts/generate-icons.js"
+  },
+  "keywords": [
+    "clinica-dental",
+    "spa",
+    "vanilla-js"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mysql2": "^3.12.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9",
+    "sharp": "^0.33.5"
+  }
+}

@@ -1,0 +1,60 @@
+require('dotenv').config();
+
+const express = require('express');
+const path = require('path');
+const { pool, testConnection } = require('./db/mysql');
+
+const app = express();
+const PORT = process.env.PORT || 8005;
+const PUBLIC_DIR = path.join(__dirname);
+
+app.use(express.json());
+app.use(express.static(PUBLIC_DIR, {
+  extensions: ['html'],
+  index: 'index.html',
+}));
+
+app.get('/api/health', async (_req, res) => {
+  try {
+    await testConnection();
+    res.json({ status: 'ok', database: 'connected' });
+  } catch (error) {
+    res.status(503).json({ status: 'error', database: 'disconnected' });
+  }
+});
+
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/empresas', require('./routes/empresas'));
+app.use('/api/empleados', require('./routes/empleados'));
+app.use('/api/pacientes', require('./routes/pacientes'));
+app.use('/api/agenda', require('./routes/agenda'));
+
+app.get('/manifest.webmanifest', (_req, res) => {
+  res.type('application/manifest+json');
+  res.sendFile(path.join(PUBLIC_DIR, 'manifest.webmanifest'));
+});
+
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+});
+
+async function startServer() {
+  try {
+    await testConnection();
+    console.log(`MySQL conectado — ${process.env.DB_HOST}/${process.env.DB_DATABASE}`);
+  } catch (error) {
+    console.error('Error al conectar con MySQL:', error.message);
+    process.exit(1);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Clínica Dental — http://localhost:${PORT}`);
+  });
+}
+
+process.on('SIGINT', async () => {
+  await pool.end();
+  process.exit(0);
+});
+
+startServer();
