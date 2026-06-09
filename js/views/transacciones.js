@@ -100,11 +100,9 @@ function renderTable() {
       <td class="num ${t.TIPO === 'PAGO' ? 'text-pago' : 'text-abono'}">${formatPrecio(t.MONTO)}</td>
       <td>${t.OBS || '—'}</td>
       <td class="text-end transacciones-actions">
-        ${t.TIPO === 'PAGO' ? `
         <button class="btn btn-sm btn-outline-secondary btn-action" data-print="${t.ID}" title="Reimprimir comprobante">
           <i class="fa-solid fa-print"></i>
         </button>
-        ` : ''}
         <button class="btn btn-sm btn-outline-primary btn-action" data-edit="${t.ID}" title="Editar">
           <i class="fa-solid fa-pen"></i>
         </button>
@@ -195,7 +193,7 @@ async function openTransaccionForm(mode, item = null) {
 
   await loadTransacciones();
 
-  if (!isEdit && transaccionCreada?.TIPO === 'PAGO') {
+  if (!isEdit && transaccionCreada) {
     const pacienteNombre = transaccionCreada.PACIENTE
       || pacientes.find((p) => p.CODPACIENTE == transaccionCreada.CODPACIENTE)?.NOMBRE;
     imprimirComprobante({ ...transaccionCreada, PACIENTE: pacienteNombre });

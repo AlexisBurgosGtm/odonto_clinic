@@ -26,13 +26,38 @@ function formatFecha(fecha) {
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
+function getTipoComprobante(tipo) {
+  if (tipo === 'ABONO') {
+    return {
+      tituloDocumento: 'Comprobante de abono',
+      subtitulo: 'Recibo de abono',
+      etiquetaMonto: 'Monto abonado',
+      colorMonto: '#1d4ed8',
+      tipoLabel: 'ABONO — Saldo a favor',
+    };
+  }
+
+  return {
+    tituloDocumento: 'Comprobante de pago',
+    subtitulo: 'Recibo de pago',
+    etiquetaMonto: 'Monto pagado',
+    colorMonto: '#15803d',
+    tipoLabel: 'PAGO — Salida',
+  };
+}
+
 export function printComprobantePago(transaccion, { empresa } = {}) {
   try {
+    const tipoInfo = getTipoComprobante(transaccion.TIPO);
     const empresaNombre = escapeHtml(empresa?.trim() || 'Clínica Dental');
     const paciente = escapeHtml(transaccion.PACIENTE || `Paciente #${transaccion.CODPACIENTE || ''}`);
     const numero = escapeHtml(transaccion.ID || '—');
     const fecha = escapeHtml(formatFecha(transaccion.FECHA));
     const monto = escapeHtml(formatPrecio(transaccion.MONTO));
+    const tipoComprobante = escapeHtml(tipoInfo.tipoLabel);
+    const tituloDocumento = escapeHtml(tipoInfo.tituloDocumento);
+    const subtitulo = escapeHtml(tipoInfo.subtitulo);
+    const etiquetaMonto = escapeHtml(tipoInfo.etiquetaMonto);
     const obs = transaccion.OBS?.trim()
       ? `<div class="row"><span class="label">Observaciones</span><span class="value">${escapeHtml(transaccion.OBS)}</span></div>`
       : '';
@@ -43,7 +68,7 @@ export function printComprobantePago(transaccion, { empresa } = {}) {
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Comprobante de pago #${numero}</title>
+  <title>${tituloDocumento} #${numero}</title>
   <style>
     @page { size: letter; margin: 16mm; }
     * { box-sizing: border-box; }
@@ -135,7 +160,17 @@ export function printComprobantePago(transaccion, { empresa } = {}) {
     .monto-box .monto {
       font-size: 18pt;
       font-weight: 700;
-      color: #15803d;
+      color: ${tipoInfo.colorMonto};
+    }
+    .tipo-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border: 1px solid #94a3b8;
+      border-radius: 4px;
+      font-size: 9.5pt;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
     .footer {
       margin-top: 18px;
@@ -158,17 +193,21 @@ export function printComprobantePago(transaccion, { empresa } = {}) {
     <header class="header">
       <img src="${logoUrl}" alt="Logo">
       <div class="header-text">
-        <h1>Comprobante de pago</h1>
+        <h1>${tituloDocumento}</h1>
         <p class="empresa">${empresaNombre}</p>
       </div>
     </header>
 
-    <p class="titulo">Recibo de pago</p>
+    <p class="titulo">${subtitulo}</p>
 
     <div class="datos">
       <div class="row">
         <span class="label">No. comprobante</span>
         <span class="value">#${numero}</span>
+      </div>
+      <div class="row">
+        <span class="label">Tipo</span>
+        <span class="value"><span class="tipo-badge">${tipoComprobante}</span></span>
       </div>
       <div class="row">
         <span class="label">Paciente</span>
@@ -182,7 +221,7 @@ export function printComprobantePago(transaccion, { empresa } = {}) {
     </div>
 
     <div class="monto-box">
-      <span class="label">Monto pagado</span>
+      <span class="label">${etiquetaMonto}</span>
       <div class="monto">${monto}</div>
     </div>
 
