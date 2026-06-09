@@ -12,6 +12,23 @@ let productos = [];
 let piezas = [];
 let filtroEstado = 'PENDIENTES';
 
+const D_FIELDS = [
+  { key: 'D_ALERGIAS', label: 'Alergias' },
+  { key: 'D_ASMA', label: 'Asma' },
+  { key: 'D_HEPATITIS', label: 'Hepatitis' },
+  { key: 'D_ANTIBIOTICOS', label: 'Antibióticos' },
+  { key: 'D_VIH', label: 'VIH' },
+  { key: 'D_HIPERTENSION', label: 'Hipertensión' },
+  { key: 'D_HIPOTENSION', label: 'Hipotensión' },
+  { key: 'D_TUBERCULOSIS', label: 'Tuberculosis' },
+];
+
+const E_FIELDS = [
+  { key: 'E_MEDICAMENTOS', label: 'Medicamentos' },
+  { key: 'E_SENSIBILIDAD_MEDICAMENTOS', label: 'Sensibilidad a medicamentos' },
+  { key: 'E_DETALLES', label: 'Detalles' },
+];
+
 function formatFecha(fecha) {
   if (!fecha) return '—';
   const partes = String(fecha).split('T')[0].split('-');
@@ -255,6 +272,58 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
+function printFieldValue(value) {
+  const text = value?.toString().trim();
+  return escapeHtml(text || '—');
+}
+
+function buildPrintPacienteSection(paciente) {
+  if (!paciente) {
+    return '<section class="paciente-info"><p class="paciente-empty">Sin datos del paciente</p></section>';
+  }
+
+  const datosBasicos = [
+    { label: 'Nombre', value: paciente.NOMBRE },
+    { label: 'Nacimiento', value: formatFecha(paciente.NACIMIENTO) },
+    { label: 'Teléfonos', value: paciente.TELEFONOS },
+    { label: 'Dirección', value: paciente.DIRECCION, wide: true },
+  ].map(({ label, value, wide }) => `
+    <div class="info-item${wide ? ' info-wide' : ''}">
+      <span class="info-label">${escapeHtml(label)}</span>
+      <span class="info-value">${printFieldValue(value)}</span>
+    </div>
+  `).join('');
+
+  const antecedentesSiNo = D_FIELDS.map(({ key, label }) => {
+    const valor = paciente[key] === 'SI' ? 'SI' : 'NO';
+    const clase = valor === 'SI' ? 'antecedente-si' : 'antecedente-no';
+    return `
+      <div class="antecedente-item ${clase}">
+        <span class="antecedente-label">${escapeHtml(label)}</span>
+        <span class="antecedente-valor">${valor}</span>
+      </div>
+    `;
+  }).join('');
+
+  const antecedentesTexto = E_FIELDS.map(({ key, label }) => `
+    <div class="texto-item">
+      <span class="texto-label">${escapeHtml(label)}</span>
+      <span class="texto-value">${printFieldValue(paciente[key])}</span>
+    </div>
+  `).join('');
+
+  return `
+    <section class="paciente-info">
+      <h2 class="section-title">Datos del paciente</h2>
+      <div class="info-grid">${datosBasicos}</div>
+
+      <h2 class="section-title">Antecedentes médicos</h2>
+      <div class="antecedentes-grid">${antecedentesSiNo}</div>
+      <div class="antecedentes-texto">${antecedentesTexto}</div>
+    </section>
+  `;
+}
+
 function mountPrintFab() {
   document.getElementById('btnPrintOrders')?.remove();
 
@@ -279,6 +348,7 @@ function printOrdersList() {
     const nombreSafe = escapeHtml(nombre);
     const filtroSafe = escapeHtml(getFiltroLabel());
     const logoUrl = escapeHtml(new URL('logo.jpeg', window.location.href).href);
+    const pacienteSectionHtml = buildPrintPacienteSection(pacienteActual);
 
     const rowsHtml = filtrados.length === 0
       ? '<tr><td colspan="8" class="empty">No hay tratamientos para imprimir</td></tr>'
@@ -340,6 +410,96 @@ function printOrdersList() {
       color: #475569;
       margin-bottom: 10px;
     }
+    .paciente-info {
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #cbd5e1;
+    }
+    .section-title {
+      font-size: 8.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #1e293b;
+      margin: 0 0 6px;
+    }
+    .section-title + .info-grid,
+    .section-title + .antecedentes-grid {
+      margin-top: 0;
+    }
+    .paciente-info .section-title:not(:first-child) {
+      margin-top: 10px;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px 10px;
+      margin-bottom: 4px;
+    }
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .info-item.info-wide {
+      grid-column: 1 / -1;
+    }
+    .info-label,
+    .antecedente-label,
+    .texto-label {
+      font-size: 7pt;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .info-value,
+    .texto-value {
+      font-size: 8.5pt;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    .antecedentes-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px 8px;
+      margin-bottom: 8px;
+    }
+    .antecedente-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 6px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      font-size: 7.5pt;
+    }
+    .antecedente-item.antecedente-si {
+      border-color: #fca5a5;
+      background: #fef2f2;
+    }
+    .antecedente-valor {
+      font-weight: 700;
+    }
+    .antecedentes-texto {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .texto-item {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .texto-value {
+      font-weight: 500;
+      white-space: pre-wrap;
+    }
+    .paciente-empty {
+      font-size: 8pt;
+      color: #64748b;
+      margin: 0;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -379,13 +539,16 @@ function printOrdersList() {
     col.c-precio-fin { width: 9%; }
     col.c-obs { width: 27%; }
     .footer {
-      margin-top: 12px;
-      padding-top: 8px;
+      margin-top: 36px;
+      padding-top: 10px;
       border-top: 1px solid #cbd5e1;
+      font-size: 8.5pt;
+    }
+    .footer-totals {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 8.5pt;
+      margin-bottom: 48px;
     }
     .totals {
       display: flex;
@@ -402,6 +565,29 @@ function printOrdersList() {
       color: #475569;
       font-size: 8pt;
     }
+    .firma-paciente {
+      width: 280px;
+      margin: 24px auto 0;
+      text-align: center;
+    }
+    .firma-linea {
+      height: 1px;
+      background: #334155;
+      margin-bottom: 6px;
+    }
+    .firma-label {
+      margin: 0;
+      font-size: 8pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #1e293b;
+    }
+    .firma-nombre {
+      margin: 4px 0 0;
+      font-size: 8.5pt;
+      color: #475569;
+    }
   </style>
 </head>
 <body>
@@ -412,6 +598,7 @@ function printOrdersList() {
       <p class="subtitle">${nombreSafe}</p>
     </div>
   </header>
+  ${pacienteSectionHtml}
   <div class="meta">Filtro: ${filtroSafe} · Fecha de impresión: ${fechaImpresion}</div>
   <table>
     <colgroup>
@@ -433,10 +620,17 @@ function printOrdersList() {
     <tbody>${rowsHtml}</tbody>
   </table>
   <footer class="footer">
-    <span class="count">${filtrados.length} tratamiento(s)</span>
-    <div class="totals">
-      <span class="total">Total Inicial: ${escapeHtml(totalInicial)}</span>
-      <span class="total">Total Final: ${escapeHtml(totalFinal)}</span>
+    <div class="footer-totals">
+      <span class="count">${filtrados.length} tratamiento(s)</span>
+      <div class="totals">
+        <span class="total">Total Inicial: ${escapeHtml(totalInicial)}</span>
+        <span class="total">Total Final: ${escapeHtml(totalFinal)}</span>
+      </div>
+    </div>
+    <div class="firma-paciente">
+      <div class="firma-linea"></div>
+      <p class="firma-label">Firma del paciente</p>
+      <p class="firma-nombre">${nombreSafe}</p>
     </div>
   </footer>
 </body>
