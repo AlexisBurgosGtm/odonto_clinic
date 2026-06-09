@@ -1507,6 +1507,21 @@ body {
   text-align: center;
 }
 
+.horas-disponibles-lista .horas-slot-clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.horas-disponibles-lista .horas-slot-clickable:hover {
+  transform: translateY(-1px);
+  background: rgba(14, 165, 233, 0.16);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.15);
+}
+
+.horas-disponibles-lista .horas-slot-ocupado {
+  cursor: default;
+}
+
 .form-label-sm {
   font-size: 0.78rem;
   color: var(--color-text-muted);

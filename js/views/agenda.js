@@ -142,6 +142,8 @@ function calcularHorariosDia(eventos, fecha) {
     const solapa = ocupados.some((o) => min < o.end && finSlot > o.start);
     slots.push({
       label: `${minutesToTime(min)} – ${minutesToTime(finSlot)}`,
+      inicio: minutesToTime(min),
+      fin: minutesToTime(finSlot),
       ocupado: solapa,
     });
   }
@@ -158,9 +160,23 @@ function buildHorasDisponiblesContent(fecha, medicosLista, eventos) {
     const eventosMedico = eventos.filter((e) => e.CODEMP == medico.CODEMP);
     const slots = calcularHorariosDia(eventosMedico, fecha);
 
-    const items = slots.map((slot) => `
-      <li class="${slot.ocupado ? 'horas-slot-ocupado' : 'horas-slot-libre'}">${slot.label}</li>
-    `).join('');
+    const items = slots.map((slot) => {
+      if (slot.ocupado) {
+        return `<li class="horas-slot-ocupado">${slot.label}</li>`;
+      }
+
+      return `
+        <li
+          class="horas-slot-libre horas-slot-clickable"
+          data-codemp="${medico.CODEMP}"
+          data-fecha="${fecha}"
+          data-hora="${slot.inicio}"
+          role="button"
+          tabindex="0"
+          title="Clic para crear cita"
+        >${slot.label}</li>
+      `;
+    }).join('');
 
     return `
       <div class="horas-disponibles-grupo">
@@ -204,6 +220,35 @@ function buildHorasDisponiblesShell(fecha, medicosLista) {
   `;
 }
 
+function handleHorasSlotClick(e) {
+  const slot = e.target.closest('li.horas-slot-libre[data-codemp]');
+  if (!slot) return;
+
+  const fecha = slot.dataset.fecha || document.getElementById('horasDisponiblesFecha')?.value;
+  const codemp = slot.dataset.codemp;
+  const hora = slot.dataset.hora;
+
+  if (!fecha || !codemp || !hora) return;
+
+  Swal.close();
+  openEventoForm('create', null, combineDatetime(fecha, hora), codemp);
+}
+
+function bindHorasDisponiblesSlots() {
+  const content = document.getElementById('horasDisponiblesContent');
+  if (!content || content.dataset.slotsBound === '1') return;
+
+  content.dataset.slotsBound = '1';
+  content.addEventListener('click', handleHorasSlotClick);
+  content.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const slot = e.target.closest('li.horas-slot-libre[data-codemp]');
+    if (!slot) return;
+    e.preventDefault();
+    handleHorasSlotClick({ target: slot });
+  });
+}
+
 async function renderHorasDisponiblesContent(fecha) {
   const content = document.getElementById('horasDisponiblesContent');
   const fechaLabel = document.getElementById('horasDisponiblesFechaLabel');
@@ -222,6 +267,7 @@ async function renderHorasDisponiblesContent(fecha) {
     if (!document.getElementById('horasDisponiblesContent')) return;
 
     content.innerHTML = buildHorasDisponiblesContent(fecha, medicosLista, eventos);
+    bindHorasDisponiblesSlots();
   } catch (error) {
     if (document.getElementById('horasDisponiblesContent')) {
       content.innerHTML = `<p class="text-danger mb-0">${error.message}</p>`;
@@ -254,6 +300,7 @@ async function openHorasDisponiblesModal() {
     showCancelButton: false,
     didOpen: () => {
       const fechaInput = document.getElementById('horasDisponiblesFecha');
+      bindHorasDisponiblesSlots();
       renderHorasDisponiblesContent(fecha);
 
       fechaInput?.addEventListener('change', () => {
@@ -564,7 +611,7 @@ function setDefaultHoras(horaInicio = '09:00') {
   horaFin.value = addMinutesToTime(horaInicio, 30);
 }
 
-async function openEventoForm(mode, evento = null, fechaDefault = null) {
+async function openEventoForm(mode, evento = null, fechaDefault = null, codempDefault = null) {
   const isEdit = mode === 'edit';
 
   if (medicos.length === 0) {
@@ -607,9 +654,15 @@ async function openEventoForm(mode, evento = null, fechaDefault = null) {
         const { date, time } = splitDatetime(fechaDefault);
         document.getElementById('swal-fecha').value = date;
         setDefaultHoras(time || '09:00');
+        if (codempDefault) {
+          document.getElementById('swal-codemp').value = codempDefault;
+        }
       } else {
         document.getElementById('swal-fecha').value = new Date().toISOString().slice(0, 10);
         setDefaultHoras('09:00');
+        if (codempDefault) {
+          document.getElementById('swal-codemp').value = codempDefault;
+        }
       }
 
       const lockedMedico = document.getElementById('swal-codemp-locked')?.value;
