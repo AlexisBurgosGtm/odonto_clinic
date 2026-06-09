@@ -12,15 +12,14 @@ function getEmpnit(req, res) {
   return empnit;
 }
 
-function todayDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 router.get('/stats', async (req, res) => {
   const empnit = getEmpnit(req, res);
   if (!empnit) return;
 
-  const fecha = req.query.fecha || todayDate();
+  const fecha = req.query.fecha;
+  if (!fecha) {
+    return res.status(400).json({ error: 'La fecha es requerida' });
+  }
 
   try {
     const [[ingresos]] = await pool.query(

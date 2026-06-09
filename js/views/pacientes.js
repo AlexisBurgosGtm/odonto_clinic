@@ -4,6 +4,7 @@ import { showAlert, clearAlert } from '../utils/alerts.js';
 import { confirmAction, alertError, alertSuccess, openFormDialog, SwalTheme } from '../utils/swal.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import { mountNuevoFab } from '../utils/nuevo-fab.js';
+import { formatLocalDateTime, localNowDatetime } from '../utils/datetime.js';
 
 let pacientes = [];
 let filtroBusqueda = '';
@@ -36,25 +37,10 @@ function formatFecha(fecha) {
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
-function formatFechaHora(fecha) {
-  if (!fecha) return '—';
-  const str = String(fecha);
-  const datePart = formatFecha(str);
-  let time = '';
-
-  if (str.includes('T')) {
-    time = str.slice(11, 16);
-  } else if (str.includes(' ')) {
-    time = str.split(' ')[1]?.slice(0, 5) || '';
-  }
-
-  return time ? `${datePart} ${time}` : datePart;
-}
-
 function formatProximaCita(cita) {
   if (!cita?.FECHA) return 'Sin cita programada';
 
-  const fecha = formatFechaHora(cita.FECHA);
+  const fecha = formatLocalDateTime(cita.FECHA);
   const medico = cita.MEDICO ? ` · ${cita.MEDICO}` : '';
   return `${fecha}${medico}`;
 }
@@ -412,7 +398,9 @@ async function openPacienteDetalle(paciente) {
   let proximaCita = null;
 
   try {
-    proximaCita = await api.agenda.proximaCita(paciente.CODPACIENTE);
+    proximaCita = await api.agenda.proximaCita(paciente.CODPACIENTE, {
+      desde: localNowDatetime(),
+    });
   } catch (error) {
     await alertError(error.message);
     return;

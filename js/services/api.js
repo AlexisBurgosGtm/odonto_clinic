@@ -89,8 +89,12 @@ export const api = {
       const qs = params.toString();
       return request(`/api/agenda${qs ? `?${qs}` : ''}`);
     },
-    proximaCita: (codpaciente) =>
-      request(`/api/agenda/paciente/${codpaciente}/proxima`),
+    proximaCita: (codpaciente, { desde } = {}) => {
+      const params = new URLSearchParams();
+      if (desde) params.set('desde', desde);
+      const qs = params.toString();
+      return request(`/api/agenda/paciente/${codpaciente}/proxima${qs ? `?${qs}` : ''}`);
+    },
     create: (body) => request('/api/agenda', { method: 'POST', body: JSON.stringify(body) }),
     update: (id, body) =>
       request(`/api/agenda/${id}`, { method: 'PUT', body: JSON.stringify(body) }),

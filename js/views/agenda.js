@@ -3,13 +3,20 @@ import { getSession } from '../services/session.js';
 import { confirmAction, alertError, alertSuccess, openFormDialog, SwalTheme } from '../utils/swal.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import { isViewMounted } from '../utils/view.js';
+import {
+  localDateString,
+  splitDatetime,
+  combineDatetime,
+  toCalendarDatetime,
+  toApiDatetime,
+} from '../utils/datetime.js';
 
 let calendar = null;
 let medicos = [];
 let pacientes = [];
 let filtroMedico = '';
 let bindAbort = null;
-let selectedDate = new Date().toISOString().slice(0, 10);
+let selectedDate = localDateString();
 
 const HORAS_INICIO = 7 * 60;
 const HORAS_FIN = 18 * 60;
@@ -31,49 +38,6 @@ export function cleanupAgenda() {
     }
     calendar = null;
   }
-}
-
-function splitDatetime(fecha) {
-  if (!fecha) return { date: '', time: '' };
-
-  const str = String(fecha).trim();
-
-  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(str)) {
-    const [date, timePart] = str.split(' ');
-    return { date, time: timePart.slice(0, 5) };
-  }
-
-  const parsed = new Date(fecha);
-  if (!Number.isNaN(parsed.getTime())) {
-    const date = [
-      parsed.getFullYear(),
-      String(parsed.getMonth() + 1).padStart(2, '0'),
-      String(parsed.getDate()).padStart(2, '0'),
-    ].join('-');
-    const time = [
-      String(parsed.getHours()).padStart(2, '0'),
-      String(parsed.getMinutes()).padStart(2, '0'),
-    ].join(':');
-    return { date, time };
-  }
-
-  if (str.includes('T')) {
-    return { date: str.slice(0, 10), time: str.slice(11, 16) };
-  }
-
-  const [date, time] = str.split(' ');
-  return { date: date || '', time: (time || '').slice(0, 5) };
-}
-
-function toCalendarDatetime(fecha) {
-  const { date, time } = splitDatetime(fecha);
-  if (!date) return fecha;
-  return time ? `${date}T${time}:00` : date;
-}
-
-function combineDatetime(date, time) {
-  if (!date || !time) return null;
-  return `${date} ${time}:00`;
 }
 
 function addMinutesToTime(time, minutes) {
@@ -281,7 +245,7 @@ async function openHorasDisponiblesModal() {
     return;
   }
 
-  const fecha = new Date().toISOString().slice(0, 10);
+  const fecha = localDateString();
   const medicosLista = getMedicosListaHoras();
 
   await SwalTheme.fire({
@@ -428,7 +392,7 @@ function eventFormHtml(isEdit) {
 }
 
 function getRefDate() {
-  return document.getElementById('swal-fecha')?.value || new Date().toISOString().slice(0, 10);
+  return document.getElementById('swal-fecha')?.value || localDateString();
 }
 
 function filterPacientes(query) {
@@ -576,8 +540,8 @@ async function loadCatalogos() {
 async function fetchEventos(info) {
   if (!isAgendaMounted()) return [];
 
-  const start = info?.startStr || null;
-  const end = info?.endStr || null;
+  const start = info?.start ? toApiDatetime(info.start) : null;
+  const end = info?.end ? toApiDatetime(info.end) : null;
   const eventos = await api.agenda.list(start, end);
 
   if (!isAgendaMounted()) return [];
@@ -658,7 +622,7 @@ async function openEventoForm(mode, evento = null, fechaDefault = null, codempDe
           document.getElementById('swal-codemp').value = codempDefault;
         }
       } else {
-        document.getElementById('swal-fecha').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('swal-fecha').value = localDateString();
         setDefaultHoras('09:00');
         if (codempDefault) {
           document.getElementById('swal-codemp').value = codempDefault;
@@ -860,7 +824,7 @@ export async function bindAgenda(params = {}) {
   cleanupAgenda();
   bindAbort = new AbortController();
   const { signal } = bindAbort;
-  selectedDate = new Date().toISOString().slice(0, 10);
+  selectedDate = localDateString();
 
   try {
     const roleConfig = getAgendaRoleConfig();

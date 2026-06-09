@@ -2,6 +2,7 @@ import { api } from '../services/api.js';
 import { getSession } from '../services/session.js';
 import { alertError } from '../utils/swal.js';
 import { isViewMounted } from '../utils/view.js';
+import { formatLocalTime, localDateString } from '../utils/datetime.js';
 
 let empresas = [];
 let selectedEmpnit = '';
@@ -16,14 +17,6 @@ function formatPrecio(value) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(num);
-}
-
-function formatHora(fecha) {
-  if (!fecha) return '—';
-  const str = String(fecha);
-  if (str.includes('T')) return str.slice(11, 16);
-  const part = str.split(' ')[1];
-  return part ? part.slice(0, 5) : '—';
 }
 
 function renderStats(stats) {
@@ -54,7 +47,7 @@ function renderStats(stats) {
     } else {
       citasBody.innerHTML = stats.citas.map((c) => `
         <tr>
-          <td class="nowrap">${formatHora(c.FECHA)}${c.FECHA_FIN ? ` – ${formatHora(c.FECHA_FIN)}` : ''}</td>
+          <td class="nowrap">${formatLocalTime(c.FECHA)}${c.FECHA_FIN ? ` – ${formatLocalTime(c.FECHA_FIN)}` : ''}</td>
           <td>${c.PACIENTE || '—'}</td>
           <td>${c.MEDICO || '—'}</td>
           <td>${c.MOTIVO || '—'}</td>
@@ -106,7 +99,7 @@ function renderEmpresaFilter() {
 }
 
 export function renderDashboard() {
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = localDateString();
   selectedFecha = hoy;
 
   return `

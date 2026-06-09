@@ -50,14 +50,16 @@ router.get('/paciente/:codpaciente/proxima', async (req, res) => {
   if (!empnit) return;
 
   try {
+    const desde = req.query.desde?.trim() || null;
+
     const [rows] = await pool.query(
       `SELECT a.ID, a.FECHA, a.FECHA_FIN, a.MOTIVO, e.EMPLEADO AS MEDICO
        FROM agenda a
        LEFT JOIN empleados e ON e.CODEMP = a.CODEMP AND e.EMPNIT = a.EMPNIT
-       WHERE a.EMPNIT = ? AND a.CODPACIENTE = ? AND a.FECHA >= NOW()
+       WHERE a.EMPNIT = ? AND a.CODPACIENTE = ? AND a.FECHA >= ?
        ORDER BY a.FECHA ASC
        LIMIT 1`,
-      [empnit, req.params.codpaciente]
+      [empnit, req.params.codpaciente, desde || '1970-01-01 00:00:00']
     );
 
     res.json(rows[0] || null);
