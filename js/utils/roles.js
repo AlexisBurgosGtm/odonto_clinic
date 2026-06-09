@@ -38,7 +38,7 @@ const ROLE_PATHS = {
 
   SECRETARIA: ['/agenda', '/pacientes', '/cumpleaneros', '/transacciones', '/tratamientos', ...PACIENTE_SUBROUTES],
 
-  MEDICO: ['/agenda', '/pacientes', '/cumpleaneros', '/pacientes/:codpaciente/estado-cuenta'],
+  MEDICO: ['/agenda', '/pacientes', '/cumpleaneros', '/pacientes/:codpaciente/tratamientos', '/pacientes/:codpaciente/estado-cuenta'],
 
 };
 
