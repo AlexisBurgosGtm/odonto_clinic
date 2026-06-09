@@ -14,6 +14,8 @@ const SwalTheme = Swal.mixin({
   reverseButtons: false,
 });
 
+export const BTN_GUARDAR_HTML = '<i class="fa-solid fa-floppy-disk me-2"></i>Guardar';
+
 /**
  * Confirmación — Cancelar izquierda, Aceptar derecha
  */
@@ -62,11 +64,23 @@ export function alertSuccess(message, title = 'Éxito') {
 }
 
 export function openFormDialog(options) {
+  const { didOpen: userDidOpen, preConfirm: userPreConfirm, ...rest } = options;
+
   return SwalTheme.fire({
     showCancelButton: true,
     reverseButtons: false,
     focusConfirm: false,
-    ...options,
+    showLoaderOnConfirm: true,
+    allowOutsideClick: () => !Swal.isLoading(),
+    ...rest,
+    didOpen: () => {
+      const btn = Swal.getConfirmButton();
+      if (btn) btn.innerHTML = BTN_GUARDAR_HTML;
+      userDidOpen?.();
+    },
+    preConfirm: userPreConfirm
+      ? async () => userPreConfirm()
+      : undefined,
   });
 }
 

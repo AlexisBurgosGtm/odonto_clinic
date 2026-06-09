@@ -3,11 +3,6 @@
  */
 export function renderConfiguraciones() {
   return `
-    <div class="page-header">
-      <h2>Configuraciones</h2>
-      <p>Ajustes generales del sistema</p>
-    </div>
-
     <div class="content-card">
       <div class="content-card-header">
         <h5><i class="fa-solid fa-gear me-2 text-primary"></i>Configuración del sistema</h5>

@@ -1,21 +1,14 @@
 import { api } from '../services/api.js';
-import { getSession } from '../services/session.js';
 import { showAlert, clearAlert } from '../utils/alerts.js';
 import { confirmAction, alertError, alertSuccess, openFormDialog } from '../utils/swal.js';
+import { sanitizeText } from '../utils/sanitize.js';
 
 const TIPOS = ['GERENTE', 'SECRETARIA', 'MEDICO'];
 
 let empleados = [];
 
 export function renderEmpleados() {
-  const session = getSession();
-
   return `
-    <div class="page-header">
-      <h2>Empleados</h2>
-      <p>Gestión del personal — <span class="badge-empnit">${session?.empnit || ''}</span></p>
-    </div>
-
     <div id="empleadosAlert"></div>
 
     <div class="content-card">
@@ -30,7 +23,6 @@ export function renderEmpleados() {
         <table class="table table-hover crud-table mb-0">
           <thead>
             <tr>
-              <th>Código</th>
               <th>Empleado</th>
               <th>Teléfono</th>
               <th>Tipo</th>
@@ -41,7 +33,7 @@ export function renderEmpleados() {
             </tr>
           </thead>
           <tbody id="empleadosTableBody">
-            <tr><td colspan="8" class="text-center text-muted py-4">Cargando...</td></tr>
+            <tr><td colspan="7" class="text-center text-muted py-4">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -113,7 +105,7 @@ function renderTable() {
   if (empleados.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" class="text-center text-muted py-4">No hay empleados registrados</td>
+        <td colspan="7" class="text-center text-muted py-4">No hay empleados registrados</td>
       </tr>
     `;
     return;
@@ -121,7 +113,6 @@ function renderTable() {
 
   tbody.innerHTML = empleados.map((e) => `
     <tr>
-      <td>${e.CODEMP}</td>
       <td>${e.EMPLEADO || '—'}</td>
       <td>${e.TELEFONO || '—'}</td>
       <td>${tipoBadge(e.TIPO)}</td>
@@ -160,7 +151,6 @@ async function openEmpleadoForm(mode, empleado = null) {
   const result = await openFormDialog({
     title: isEdit ? 'Editar empleado' : 'Nuevo empleado',
     html: empleadoFormHtml(isEdit),
-    confirmButtonText: 'Guardar',
     didOpen: () => {
       const colorInput = document.getElementById('swal-color');
       const colorValue = document.getElementById('swal-color-value');
@@ -196,8 +186,8 @@ async function openEmpleadoForm(mode, empleado = null) {
         });
       }
     },
-    preConfirm: () => {
-      const EMPLEADO = document.getElementById('swal-empleado').value.trim();
+    preConfirm: async () => {
+      const EMPLEADO = sanitizeText(document.getElementById('swal-empleado').value, { maxLength: 255 });
       const CLAVE = document.getElementById('swal-clave').value;
 
       if (!EMPLEADO) {
@@ -212,33 +202,32 @@ async function openEmpleadoForm(mode, empleado = null) {
 
       const body = {
         EMPLEADO,
-        TELEFONO: document.getElementById('swal-telefono').value.trim(),
+        TELEFONO: sanitizeText(document.getElementById('swal-telefono').value, { maxLength: 50 }),
         TIPO: document.getElementById('swal-tipo').value,
-        USUARIO: document.getElementById('swal-usuario').value.trim(),
+        USUARIO: sanitizeText(document.getElementById('swal-usuario').value, { maxLength: 255 }),
         COLOR: document.getElementById('swal-color').value,
         HABILITADO: isEdit ? (empleado.HABILITADO || 'SI') : 'SI',
       };
 
       if (CLAVE) body.CLAVE = CLAVE;
 
-      return body;
+      try {
+        if (isEdit) {
+          await api.empleados.update(empleado.CODEMP, body);
+        } else {
+          await api.empleados.create(body);
+        }
+      } catch (error) {
+        Swal.showValidationMessage(error.message);
+        return false;
+      }
     },
   });
 
-  if (!result.isConfirmed || !result.value) return;
+  if (!result.isConfirmed) return;
 
-  try {
-    if (isEdit) {
-      await api.empleados.update(empleado.CODEMP, result.value);
-    } else {
-      await api.empleados.create(result.value);
-    }
-
-    await loadEmpleados();
-    await alertSuccess(isEdit ? 'Empleado actualizado' : 'Empleado creado');
-  } catch (error) {
-    await alertError(error.message);
-  }
+  await loadEmpleados();
+  await alertSuccess(isEdit ? 'Empleado actualizado' : 'Empleado creado');
 }
 
 async function handleToggleHabilitado(codemp) {

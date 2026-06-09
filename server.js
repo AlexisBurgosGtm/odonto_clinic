@@ -28,6 +28,10 @@ app.use('/api/empresas', require('./routes/empresas'));
 app.use('/api/empleados', require('./routes/empleados'));
 app.use('/api/pacientes', require('./routes/pacientes'));
 app.use('/api/agenda', require('./routes/agenda'));
+app.use('/api/productos', require('./routes/productos'));
+app.use('/api/piezas', require('./routes/piezas'));
+app.use('/api/orders', require('./routes/orders'));
+app.use('/api/dashboard', require('./routes/dashboard'));
 
 app.get('/manifest.webmanifest', (_req, res) => {
   res.type('application/manifest+json');

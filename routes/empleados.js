@@ -89,6 +89,25 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Tipo de empleado no válido' });
   }
 
+  const usuario = USUARIO?.trim() || null;
+
+  if (usuario) {
+    try {
+      const [duplicado] = await pool.query(
+        `SELECT CODEMP FROM empleados
+         WHERE USUARIO IS NOT NULL AND LOWER(TRIM(USUARIO)) = LOWER(?)`,
+        [usuario]
+      );
+
+      if (duplicado.length > 0) {
+        return res.status(409).json({ error: 'El nombre de usuario ya está en uso en otra empresa' });
+      }
+    } catch (error) {
+      console.error('Error al validar usuario:', error.message);
+      return res.status(500).json({ error: 'Error al validar el usuario' });
+    }
+  }
+
   try {
     const [result] = await pool.query(
       `INSERT INTO empleados (EMPNIT, EMPLEADO, TELEFONO, TIPO, USUARIO, CLAVE, HABILITADO, COLOR)
@@ -98,7 +117,7 @@ router.post('/', async (req, res) => {
         EMPLEADO.trim(),
         TELEFONO?.trim() || null,
         TIPO || null,
-        USUARIO?.trim() || null,
+        usuario,
         CLAVE || null,
         HABILITADO || 'SI',
         COLOR || '#0ea5e9',
@@ -111,7 +130,7 @@ router.post('/', async (req, res) => {
       EMPLEADO: EMPLEADO.trim(),
       TELEFONO: TELEFONO?.trim() || null,
       TIPO: TIPO || null,
-      USUARIO: USUARIO?.trim() || null,
+      USUARIO: usuario,
       HABILITADO: HABILITADO || 'SI',
       COLOR: COLOR || '#0ea5e9',
     });
@@ -135,6 +154,26 @@ router.put('/:codemp', async (req, res) => {
     return res.status(400).json({ error: 'Tipo de empleado no válido' });
   }
 
+  const usuario = USUARIO?.trim() || null;
+
+  if (usuario) {
+    try {
+      const [duplicado] = await pool.query(
+        `SELECT CODEMP FROM empleados
+         WHERE USUARIO IS NOT NULL AND LOWER(TRIM(USUARIO)) = LOWER(?)
+           AND NOT (CODEMP = ? AND EMPNIT = ?)`,
+        [usuario, req.params.codemp, empnit]
+      );
+
+      if (duplicado.length > 0) {
+        return res.status(409).json({ error: 'El nombre de usuario ya está en uso en otra empresa' });
+      }
+    } catch (error) {
+      console.error('Error al validar usuario:', error.message);
+      return res.status(500).json({ error: 'Error al validar el usuario' });
+    }
+  }
+
   try {
     const fields = [
       'EMPLEADO = ?', 'TELEFONO = ?', 'TIPO = ?', 'USUARIO = ?',
@@ -144,7 +183,7 @@ router.put('/:codemp', async (req, res) => {
       EMPLEADO.trim(),
       TELEFONO?.trim() || null,
       TIPO || null,
-      USUARIO?.trim() || null,
+      usuario,
       HABILITADO || 'SI',
       COLOR || '#0ea5e9',
     ];

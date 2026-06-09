@@ -51,6 +51,7 @@ export const api = {
 
   pacientes: {
     list: () => request('/api/pacientes'),
+    get: (codpaciente) => request(`/api/pacientes/${codpaciente}`),
     create: (body) => request('/api/pacientes', { method: 'POST', body: JSON.stringify(body) }),
     update: (codpaciente, body) =>
       request(`/api/pacientes/${codpaciente}`, { method: 'PUT', body: JSON.stringify(body) }),
@@ -69,5 +70,37 @@ export const api = {
     update: (id, body) =>
       request(`/api/agenda/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     delete: (id) => request(`/api/agenda/${id}`, { method: 'DELETE' }),
+  },
+
+  productos: {
+    list: () => request('/api/productos'),
+    create: (body) => request('/api/productos', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id, body) =>
+      request(`/api/productos/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    delete: (id) => request(`/api/productos/${id}`, { method: 'DELETE' }),
+  },
+
+  piezas: {
+    list: () => request('/api/piezas'),
+  },
+
+  orders: {
+    listByPaciente: (codpaciente) => request(`/api/orders/paciente/${codpaciente}`),
+    create: (body) => request('/api/orders', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id, body) =>
+      request(`/api/orders/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    finalizar: (id, body) =>
+      request(`/api/orders/${id}/finalizar`, { method: 'PUT', body: JSON.stringify(body) }),
+    delete: (id) => request(`/api/orders/${id}`, { method: 'DELETE' }),
+  },
+
+  dashboard: {
+    stats: ({ empnit, fecha } = {}) => {
+      const params = new URLSearchParams();
+      if (empnit) params.set('empnit', empnit);
+      if (fecha) params.set('fecha', fecha);
+      const qs = params.toString();
+      return request(`/api/dashboard/stats${qs ? `?${qs}` : ''}`);
+    },
   },
 };

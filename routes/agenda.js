@@ -20,9 +20,9 @@ router.get('/', async (req, res) => {
 
   try {
     let sql = `
-      SELECT a.ID, a.EMPNIT, a.CODPACIENTE, a.CODEMP, a.MOTIVO, a.OBS, a.FECHA,
+      SELECT a.ID, a.EMPNIT, a.CODPACIENTE, a.CODEMP, a.MOTIVO, a.OBS, a.FECHA, a.FECHA_FIN,
              e.EMPLEADO AS MEDICO, e.COLOR,
-             p.NOMBRE AS PACIENTE
+             p.NOMBRE AS PACIENTE, p.NACIMIENTO
       FROM agenda a
       LEFT JOIN empleados e ON e.CODEMP = a.CODEMP AND e.EMPNIT = a.EMPNIT
       LEFT JOIN pacientes p ON p.CODPACIENTE = a.CODPACIENTE AND p.EMPNIT = a.EMPNIT
@@ -51,9 +51,9 @@ router.get('/:id', async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      `SELECT a.ID, a.EMPNIT, a.CODPACIENTE, a.CODEMP, a.MOTIVO, a.OBS, a.FECHA,
+      `SELECT a.ID, a.EMPNIT, a.CODPACIENTE, a.CODEMP, a.MOTIVO, a.OBS, a.FECHA, a.FECHA_FIN,
               e.EMPLEADO AS MEDICO, e.COLOR,
-              p.NOMBRE AS PACIENTE
+              p.NOMBRE AS PACIENTE, p.NACIMIENTO
        FROM agenda a
        LEFT JOIN empleados e ON e.CODEMP = a.CODEMP AND e.EMPNIT = a.EMPNIT
        LEFT JOIN pacientes p ON p.CODPACIENTE = a.CODPACIENTE AND p.EMPNIT = a.EMPNIT
@@ -76,10 +76,18 @@ router.post('/', async (req, res) => {
   const empnit = getEmpnit(req, res);
   if (!empnit) return;
 
-  const { CODPACIENTE, CODEMP, MOTIVO, OBS, FECHA } = req.body;
+  const { CODPACIENTE, CODEMP, MOTIVO, OBS, FECHA, FECHA_FIN } = req.body;
 
   if (!FECHA) {
     return res.status(400).json({ error: 'La fecha es requerida' });
+  }
+
+  if (!FECHA_FIN) {
+    return res.status(400).json({ error: 'La hora final es requerida' });
+  }
+
+  if (FECHA_FIN <= FECHA) {
+    return res.status(400).json({ error: 'La hora final debe ser posterior a la hora de inicio' });
   }
 
   if (!CODEMP) {
@@ -98,8 +106,8 @@ router.post('/', async (req, res) => {
     }
 
     const [result] = await pool.query(
-      `INSERT INTO agenda (EMPNIT, CODPACIENTE, CODEMP, MOTIVO, OBS, FECHA)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO agenda (EMPNIT, CODPACIENTE, CODEMP, MOTIVO, OBS, FECHA, FECHA_FIN)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         empnit,
         CODPACIENTE || null,
@@ -107,6 +115,7 @@ router.post('/', async (req, res) => {
         MOTIVO?.trim() || null,
         OBS?.trim() || null,
         FECHA,
+        FECHA_FIN,
       ]
     );
 
@@ -121,10 +130,18 @@ router.put('/:id', async (req, res) => {
   const empnit = getEmpnit(req, res);
   if (!empnit) return;
 
-  const { CODPACIENTE, CODEMP, MOTIVO, OBS, FECHA } = req.body;
+  const { CODPACIENTE, CODEMP, MOTIVO, OBS, FECHA, FECHA_FIN } = req.body;
 
   if (!FECHA) {
     return res.status(400).json({ error: 'La fecha es requerida' });
+  }
+
+  if (!FECHA_FIN) {
+    return res.status(400).json({ error: 'La hora final es requerida' });
+  }
+
+  if (FECHA_FIN <= FECHA) {
+    return res.status(400).json({ error: 'La hora final debe ser posterior a la hora de inicio' });
   }
 
   if (!CODEMP) {
@@ -134,7 +151,7 @@ router.put('/:id', async (req, res) => {
   try {
     const [result] = await pool.query(
       `UPDATE agenda
-       SET CODPACIENTE = ?, CODEMP = ?, MOTIVO = ?, OBS = ?, FECHA = ?
+       SET CODPACIENTE = ?, CODEMP = ?, MOTIVO = ?, OBS = ?, FECHA = ?, FECHA_FIN = ?
        WHERE ID = ? AND EMPNIT = ?`,
       [
         CODPACIENTE || null,
@@ -142,6 +159,7 @@ router.put('/:id', async (req, res) => {
         MOTIVO?.trim() || null,
         OBS?.trim() || null,
         FECHA,
+        FECHA_FIN,
         req.params.id,
         empnit,
       ]

@@ -1,17 +1,12 @@
 import { api } from '../services/api.js';
 import { showAlert, clearAlert } from '../utils/alerts.js';
-import { confirmAction, alertError, alertSuccess } from '../utils/swal.js';
+import { confirmAction, alertError, alertSuccess, openFormDialog } from '../utils/swal.js';
+import { sanitizeText } from '../utils/sanitize.js';
 
 let empresas = [];
-let modal = null;
 
 export function renderEmpresas() {
   return `
-    <div class="page-header">
-      <h2>Empresas</h2>
-      <p>Administración de empresas registradas</p>
-    </div>
-
     <div id="empresasAlert"></div>
 
     <div class="content-card">
@@ -37,32 +32,20 @@ export function renderEmpresas() {
         </table>
       </div>
     </div>
+  `;
+}
 
-    <div class="modal fade" id="empresaModal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="empresaModalTitle">Nueva empresa</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <form id="empresaForm">
-            <div class="modal-body">
-              <div class="mb-3">
-                <label for="empnit" class="form-label">EMPNIT <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="empnit" maxlength="50" required>
-                <div class="form-text" id="empnitHelp">Identificador único de la empresa</div>
-              </div>
-              <div class="mb-3">
-                <label for="empresa" class="form-label">Nombre de la empresa</label>
-                <input type="text" class="form-control" id="empresa" maxlength="255">
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-              <button type="submit" class="btn btn-primary" id="btnGuardarEmpresa">Guardar</button>
-            </div>
-          </form>
-        </div>
+function empresaFormHtml(isEdit) {
+  return `
+    <div class="swal-form text-start">
+      <div class="mb-3">
+        <label class="form-label">EMPNIT <span class="text-danger">*</span></label>
+        <input type="text" id="swal-empnit" class="form-control" maxlength="50" ${isEdit ? 'readonly' : ''}>
+        <div class="form-text">Identificador único de la empresa</div>
+      </div>
+      <div class="mb-0">
+        <label class="form-label">Nombre de la empresa</label>
+        <input type="text" id="swal-empresa" class="form-control" maxlength="255">
       </div>
     </div>
   `;
@@ -107,55 +90,44 @@ async function loadEmpresas() {
   }
 }
 
-function openModal(mode, empresa = null) {
-  const title = document.getElementById('empresaModalTitle');
-  const empnitInput = document.getElementById('empnit');
-  const empresaInput = document.getElementById('empresa');
-  const form = document.getElementById('empresaForm');
+async function openEmpresaForm(mode, empresa = null) {
+  const isEdit = mode === 'edit';
 
-  form.dataset.mode = mode;
-  form.dataset.originalEmpnit = empresa?.EMPNIT || '';
+  const result = await openFormDialog({
+    title: isEdit ? 'Editar empresa' : 'Nueva empresa',
+    html: empresaFormHtml(isEdit),
+    didOpen: () => {
+      if (isEdit) {
+        document.getElementById('swal-empnit').value = empresa.EMPNIT || '';
+        document.getElementById('swal-empresa').value = empresa.EMPRESA || '';
+      }
+    },
+    preConfirm: async () => {
+      const EMPNIT = sanitizeText(document.getElementById('swal-empnit').value, { maxLength: 50 });
+      const EMPRESA = sanitizeText(document.getElementById('swal-empresa').value, { maxLength: 255 });
 
-  if (mode === 'edit') {
-    title.textContent = 'Editar empresa';
-    empnitInput.value = empresa.EMPNIT;
-    empnitInput.readOnly = true;
-    empnitInput.classList.add('bg-light');
-    empresaInput.value = empresa.EMPRESA || '';
-  } else {
-    title.textContent = 'Nueva empresa';
-    form.reset();
-    empnitInput.readOnly = false;
-    empnitInput.classList.remove('bg-light');
-  }
+      if (!EMPNIT) {
+        Swal.showValidationMessage('EMPNIT es requerido');
+        return false;
+      }
 
-  modal.show();
-}
+      try {
+        if (isEdit) {
+          await api.empresas.update(empresa.EMPNIT, { EMPRESA });
+        } else {
+          await api.empresas.create({ EMPNIT, EMPRESA });
+        }
+      } catch (error) {
+        Swal.showValidationMessage(error.message);
+        return false;
+      }
+    },
+  });
 
-async function handleSubmit(e) {
-  e.preventDefault();
-  const form = e.target;
-  const mode = form.dataset.mode;
-  const empnit = document.getElementById('empnit').value.trim();
-  const empresa = document.getElementById('empresa').value.trim();
-  const btn = document.getElementById('btnGuardarEmpresa');
+  if (!result.isConfirmed) return;
 
-  btn.disabled = true;
-
-  try {
-    if (mode === 'edit') {
-      await api.empresas.update(form.dataset.originalEmpnit, { EMPRESA: empresa });
-    } else {
-      await api.empresas.create({ EMPNIT: empnit, EMPRESA: empresa });
-    }
-
-    modal.hide();
-    await loadEmpresas();
-  } catch (error) {
-    showAlert('empresasAlert', error.message);
-  } finally {
-    btn.disabled = false;
-  }
+  await loadEmpresas();
+  await alertSuccess(isEdit ? 'Empresa actualizada' : 'Empresa creada');
 }
 
 async function handleDelete(empnit) {
@@ -181,12 +153,7 @@ async function handleDelete(empnit) {
 }
 
 export function bindEmpresas() {
-  const modalEl = document.getElementById('empresaModal');
-  modal = new bootstrap.Modal(modalEl);
-
-  document.getElementById('btnNuevaEmpresa')?.addEventListener('click', () => openModal('create'));
-
-  document.getElementById('empresaForm')?.addEventListener('submit', handleSubmit);
+  document.getElementById('btnNuevaEmpresa')?.addEventListener('click', () => openEmpresaForm('create'));
 
   document.getElementById('empresasTableBody')?.addEventListener('click', (e) => {
     const editBtn = e.target.closest('[data-edit]');
@@ -194,7 +161,7 @@ export function bindEmpresas() {
 
     if (editBtn) {
       const empresa = empresas.find((emp) => emp.EMPNIT === editBtn.dataset.edit);
-      if (empresa) openModal('edit', empresa);
+      if (empresa) openEmpresaForm('edit', empresa);
     }
 
     if (deleteBtn) {
