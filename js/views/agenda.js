@@ -505,7 +505,7 @@ function bindPacienteAutocomplete() {
 
 function mapEventoToCalendar(evento) {
   const color = evento.COLOR || '#0ea5e9';
-  const title = evento.MOTIVO || evento.PACIENTE || 'Cita';
+  const title = evento.PACIENTE || 'Sin paciente';
 
   return {
     id: evento.ID,

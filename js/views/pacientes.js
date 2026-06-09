@@ -35,6 +35,29 @@ function formatFecha(fecha) {
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
+function formatFechaHora(fecha) {
+  if (!fecha) return '—';
+  const str = String(fecha);
+  const datePart = formatFecha(str);
+  let time = '';
+
+  if (str.includes('T')) {
+    time = str.slice(11, 16);
+  } else if (str.includes(' ')) {
+    time = str.split(' ')[1]?.slice(0, 5) || '';
+  }
+
+  return time ? `${datePart} ${time}` : datePart;
+}
+
+function formatProximaCita(cita) {
+  if (!cita?.FECHA) return 'Sin cita programada';
+
+  const fecha = formatFechaHora(cita.FECHA);
+  const medico = cita.MEDICO ? ` · ${cita.MEDICO}` : '';
+  return `${fecha}${medico}`;
+}
+
 function toInputDate(fecha) {
   if (!fecha) return '';
   return String(fecha).split('T')[0];
@@ -127,7 +150,7 @@ function detalleItem(label, value, col = 'col-md-6') {
   `;
 }
 
-function pacienteDetalleHtml(paciente) {
+function pacienteDetalleHtml(paciente, proximaCita = null) {
   const dFieldsHtml = D_FIELDS.map(({ key, label }) =>
     detalleItem(label, siNoBadgeReadonly(paciente[key] || 'NO'), 'col-md-4')
   ).join('');
@@ -144,6 +167,7 @@ function pacienteDetalleHtml(paciente) {
         ${detalleItem('Teléfonos', paciente.TELEFONOS, 'col-md-4')}
         ${detalleItem('Email', paciente.EMAIL, 'col-md-4')}
         ${detalleItem('Dirección', paciente.DIRECCION, 'col-12')}
+        ${detalleItem('Próxima cita', formatProximaCita(proximaCita), 'col-12')}
       </div>
 
       <div class="swal-form-section">
@@ -385,10 +409,19 @@ async function loadPacientes() {
   }
 }
 
-function openPacienteDetalle(paciente) {
+async function openPacienteDetalle(paciente) {
+  let proximaCita = null;
+
+  try {
+    proximaCita = await api.agenda.proximaCita(paciente.CODPACIENTE);
+  } catch (error) {
+    await alertError(error.message);
+    return;
+  }
+
   SwalTheme.fire({
     title: 'Datos del paciente',
-    html: pacienteDetalleHtml(paciente),
+    html: pacienteDetalleHtml(paciente, proximaCita),
     width: '960px',
     showCancelButton: false,
     confirmButtonText: 'Cerrar',

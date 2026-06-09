@@ -45,6 +45,28 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/paciente/:codpaciente/proxima', async (req, res) => {
+  const empnit = getEmpnit(req, res);
+  if (!empnit) return;
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT a.ID, a.FECHA, a.FECHA_FIN, a.MOTIVO, e.EMPLEADO AS MEDICO
+       FROM agenda a
+       LEFT JOIN empleados e ON e.CODEMP = a.CODEMP AND e.EMPNIT = a.EMPNIT
+       WHERE a.EMPNIT = ? AND a.CODPACIENTE = ? AND a.FECHA >= NOW()
+       ORDER BY a.FECHA ASC
+       LIMIT 1`,
+      [empnit, req.params.codpaciente]
+    );
+
+    res.json(rows[0] || null);
+  } catch (error) {
+    console.error('Error al obtener próxima cita:', error.message);
+    res.status(500).json({ error: 'Error al obtener la próxima cita' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   const empnit = getEmpnit(req, res);
   if (!empnit) return;
