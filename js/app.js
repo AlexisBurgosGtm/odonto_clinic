@@ -20,7 +20,7 @@ import { renderEmpleados, bindEmpleados } from './views/empleados.js';
 import { renderEmpresas, bindEmpresas } from './views/empresas.js';
 import { renderConfiguraciones, bindConfiguraciones } from './views/configuraciones.js';
 import { alertError, confirmAction } from './utils/swal.js';
-import { removeNuevoFab } from './utils/nuevo-fab.js';
+import { cleanupFloatingUi } from './utils/floating-ui.js';
 
 /* ─── Mapa de rutas → renderers ────────────── */
 const routes = {
@@ -193,8 +193,7 @@ function renderView(route, path, params = {}) {
     if (!isViewCurrent(viewGen)) return;
 
     cleanupAgenda();
-    document.getElementById('btnPrintOrders')?.remove();
-    removeNuevoFab();
+    cleanupFloatingUi();
     container.innerHTML = `<div class="view-enter" data-view-gen="${viewGen}">${route.render(params)}</div>`;
 
     const topbarTitle = document.getElementById('topbarTitle');
@@ -240,6 +239,8 @@ function updateActiveNav(path) {
 
 /* ─── Autenticación ────────────────────────── */
 function showLogin() {
+  cleanupAgenda();
+  cleanupFloatingUi();
   app.innerHTML = renderLogin();
   bindLoginEvents(handleLogin);
 }

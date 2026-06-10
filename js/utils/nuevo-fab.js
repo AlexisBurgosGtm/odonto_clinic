@@ -1,3 +1,7 @@
+import { removeNuevoFab } from './floating-ui.js';
+
+export { removeNuevoFab };
+
 export function mountNuevoFab({ id, icon, title, onClick }) {
   removeNuevoFab();
 
@@ -12,8 +16,4 @@ export function mountNuevoFab({ id, icon, title, onClick }) {
   document.body.appendChild(btn);
 
   return btn;
-}
-
-export function removeNuevoFab() {
-  document.querySelector('.btn-nuevo-fab')?.remove();
 }

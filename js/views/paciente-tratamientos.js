@@ -4,6 +4,7 @@ import { showAlert, clearAlert } from '../utils/alerts.js';
 import { confirmAction, alertError, alertSuccess, openFormDialog } from '../utils/swal.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import { isViewMounted } from '../utils/view.js';
+import { removePrintFab } from '../utils/floating-ui.js';
 
 let codpacienteActual = null;
 let pacienteActual = null;
@@ -325,7 +326,7 @@ function buildPrintPacienteSection(paciente) {
 }
 
 function mountPrintFab() {
-  document.getElementById('btnPrintOrders')?.remove();
+  removePrintFab();
 
   const btn = document.createElement('button');
   btn.type = 'button';
