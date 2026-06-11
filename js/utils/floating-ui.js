@@ -4,6 +4,7 @@ export function removeNuevoFab() {
 
 export function removePrintFab() {
   document.getElementById('btnPrintOrders')?.remove();
+  document.getElementById('btnPrintEstadoCuenta')?.remove();
   document.querySelectorAll('.btn-print-fab').forEach((el) => el.remove());
 }
 

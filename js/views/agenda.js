@@ -17,18 +17,53 @@ let pacientes = [];
 let filtroMedico = '';
 let bindAbort = null;
 let selectedDate = localDateString();
+let agendaEventosPorId = new Map();
+let agendaMobileResizeHandler = null;
 
 const HORAS_INICIO = 7 * 60;
 const HORAS_FIN = 18 * 60;
 const HORAS_INTERVALO = 30;
+const AGENDA_MOBILE_MQ = window.matchMedia('(max-width: 575.98px)');
+
+function isAgendaMobileLayout() {
+  return AGENDA_MOBILE_MQ.matches;
+}
 
 function isAgendaMounted() {
-  return Boolean(document.getElementById('calendar'));
+  return Boolean(document.getElementById('calendar') || document.getElementById('agendaMobileListBody'));
+}
+
+function getAgendaMobileFecha() {
+  return document.getElementById('agendaMobileFecha')?.value || selectedDate || localDateString();
+}
+
+function formatCitaHorario(evento) {
+  const { time: inicio } = splitDatetime(evento.FECHA);
+  const { time: fin } = splitDatetime(evento.FECHA_FIN);
+  if (inicio && fin) return `${inicio} – ${fin}`;
+  return inicio || '—';
+}
+
+function sortEventosPorHora(eventos) {
+  return [...eventos].sort((a, b) => {
+    const horaA = splitDatetime(a.FECHA).time || '';
+    const horaB = splitDatetime(b.FECHA).time || '';
+    return horaA.localeCompare(horaB);
+  });
+}
+
+function indexAgendaEventos(eventos) {
+  agendaEventosPorId = new Map(eventos.map((evento) => [String(evento.ID), evento]));
 }
 
 export function cleanupAgenda() {
   bindAbort?.abort();
   bindAbort = null;
+
+  if (agendaMobileResizeHandler) {
+    AGENDA_MOBILE_MQ.removeEventListener('change', agendaMobileResizeHandler);
+    agendaMobileResizeHandler = null;
+  }
 
   if (calendar) {
     try {
@@ -91,28 +126,40 @@ function getEventoRangoMinutos(evento, fecha) {
   return { start: startMin, end: endMin };
 }
 
-function calcularHorariosDia(eventos, fecha) {
-  const ocupados = eventos
-    .map((e) => getEventoRangoMinutos(e, fecha))
-    .filter(Boolean)
-    .sort((a, b) => a.start - b.start);
+function findEventoEnSlot(eventos, fecha, slotStart, slotEnd) {
+  return eventos.find((e) => {
+    const rango = getEventoRangoMinutos(e, fecha);
+    if (!rango) return false;
+    return slotStart < rango.end && slotEnd > rango.start;
+  }) || null;
+}
 
+function calcularHorariosDia(eventos, fecha) {
   const slots = [];
 
   for (let min = HORAS_INICIO; min < HORAS_FIN; min += HORAS_INTERVALO) {
     const finSlot = min + HORAS_INTERVALO;
     if (finSlot > HORAS_FIN) break;
 
-    const solapa = ocupados.some((o) => min < o.end && finSlot > o.start);
+    const evento = findEventoEnSlot(eventos, fecha, min, finSlot);
     slots.push({
       label: `${minutesToTime(min)} – ${minutesToTime(finSlot)}`,
       inicio: minutesToTime(min),
       fin: minutesToTime(finSlot),
-      ocupado: solapa,
+      ocupado: Boolean(evento),
+      evento,
     });
   }
 
   return slots;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function buildHorasDisponiblesContent(fecha, medicosLista, eventos) {
@@ -125,6 +172,18 @@ function buildHorasDisponiblesContent(fecha, medicosLista, eventos) {
     const slots = calcularHorariosDia(eventosMedico, fecha);
 
     const items = slots.map((slot) => {
+      if (slot.ocupado && slot.evento) {
+        return `
+        <li
+          class="horas-slot-ocupado horas-slot-ocupado-clickable"
+          data-event-id="${slot.evento.ID}"
+          role="button"
+          tabindex="0"
+          title="Ver detalle de la cita"
+        >${slot.label}</li>
+        `;
+      }
+
       if (slot.ocupado) {
         return `<li class="horas-slot-ocupado">${slot.label}</li>`;
       }
@@ -184,7 +243,58 @@ function buildHorasDisponiblesShell(fecha, medicosLista) {
   `;
 }
 
+function buildCitaDetalleHtml(evento) {
+  const { time: horaInicio } = splitDatetime(evento.FECHA);
+  const { time: horaFin } = splitDatetime(evento.FECHA_FIN);
+  const horario = horaFin ? `${horaInicio} – ${horaFin}` : horaInicio || '—';
+
+  return `
+    <div class="swal-form text-start cita-detalle-modal">
+      <div class="mb-3">
+        <label class="form-label text-muted small mb-1">Horario</label>
+        <p class="mb-0 fw-semibold">${escapeHtml(horario)}</p>
+      </div>
+      <div class="mb-3">
+        <label class="form-label text-muted small mb-1">Paciente</label>
+        <p class="mb-0 fw-semibold">${escapeHtml(evento.PACIENTE || 'Sin paciente')}</p>
+      </div>
+      <div class="mb-3">
+        <label class="form-label text-muted small mb-1">Motivo</label>
+        <p class="mb-0">${escapeHtml(evento.MOTIVO || '—')}</p>
+      </div>
+      <div class="mb-0">
+        <label class="form-label text-muted small mb-1">Observaciones</label>
+        <p class="mb-0 cita-detalle-obs">${escapeHtml(evento.OBS || '—')}</p>
+      </div>
+    </div>
+  `;
+}
+
+async function openCitaDetalleModal(eventIdOrEvento) {
+  const evento = eventIdOrEvento && typeof eventIdOrEvento === 'object'
+    ? eventIdOrEvento
+    : agendaEventosPorId.get(String(eventIdOrEvento));
+  if (!evento) {
+    await alertError('No se encontró la información de la cita');
+    return;
+  }
+
+  await SwalTheme.fire({
+    title: 'Detalle de la cita',
+    html: buildCitaDetalleHtml(evento),
+    width: 'min(420px, 92vw)',
+    confirmButtonText: 'Cerrar',
+    showCancelButton: false,
+  });
+}
+
 function handleHorasSlotClick(e) {
+  const slotOcupado = e.target.closest('li.horas-slot-ocupado-clickable[data-event-id]');
+  if (slotOcupado) {
+    openCitaDetalleModal(slotOcupado.dataset.eventId);
+    return;
+  }
+
   const slot = e.target.closest('li.horas-slot-libre[data-codemp]');
   if (!slot) return;
 
@@ -206,7 +316,7 @@ function bindHorasDisponiblesSlots() {
   content.addEventListener('click', handleHorasSlotClick);
   content.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    const slot = e.target.closest('li.horas-slot-libre[data-codemp]');
+    const slot = e.target.closest('li.horas-slot-libre[data-codemp], li.horas-slot-ocupado-clickable[data-event-id]');
     if (!slot) return;
     e.preventDefault();
     handleHorasSlotClick({ target: slot });
@@ -230,6 +340,7 @@ async function renderHorasDisponiblesContent(fecha) {
 
     if (!document.getElementById('horasDisponiblesContent')) return;
 
+    indexAgendaEventos(eventos);
     content.innerHTML = buildHorasDisponiblesContent(fecha, medicosLista, eventos);
     bindHorasDisponiblesSlots();
   } catch (error) {
@@ -251,9 +362,9 @@ async function openHorasDisponiblesModal() {
   await SwalTheme.fire({
     title: 'Horas disponibles',
     html: buildHorasDisponiblesShell(fecha, medicosLista),
-    width: '860px',
+    width: 'min(860px, 96vw)',
     customClass: {
-      popup: 'swal-popup swal-popup-wide',
+      popup: 'swal-popup swal-popup-wide swal-popup-horas',
       title: 'swal-title',
       htmlContainer: 'swal-html',
       confirmButton: 'btn btn-swal-confirm',
@@ -693,7 +804,7 @@ async function openEventoForm(mode, evento = null, fechaDefault = null, codempDe
 
   if (!result.isConfirmed) return;
 
-  calendar?.refetchEvents();
+  refreshAgendaViews();
   await alertSuccess(isEdit ? 'Cita actualizada' : 'Cita creada');
 }
 
@@ -710,16 +821,117 @@ async function handleDelete(id) {
 
   try {
     await api.agenda.delete(id);
-    calendar?.refetchEvents();
+    refreshAgendaViews();
     await alertSuccess('Cita eliminada');
   } catch (error) {
     await alertError(error.message);
   }
 }
 
+function renderAgendaMobileRows(eventos) {
+  if (eventos.length === 0) {
+    return `
+      <tr>
+        <td colspan="3" class="text-center text-muted py-4">No hay citas para esta fecha</td>
+      </tr>
+    `;
+  }
+
+  return sortEventosPorHora(eventos).map((evento) => {
+    const color = evento.COLOR || '#0ea5e9';
+    return `
+      <tr
+        class="agenda-mobile-row"
+        data-event-id="${evento.ID}"
+        style="--agenda-medico-color: ${color}"
+      >
+        <td class="nowrap agenda-mobile-hora">${escapeHtml(formatCitaHorario(evento))}</td>
+        <td class="agenda-mobile-paciente">${escapeHtml(evento.PACIENTE || 'Sin paciente')}</td>
+        <td class="agenda-mobile-motivo">${escapeHtml(evento.MOTIVO || '—')}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function loadAgendaMobileList(fecha = getAgendaMobileFecha()) {
+  const tbody = document.getElementById('agendaMobileListBody');
+  if (!tbody) return;
+
+  selectedDate = fecha;
+  tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">Cargando...</td></tr>';
+
+  try {
+    const eventos = await api.agenda.list(`${fecha} 00:00:00`, `${fecha} 23:59:59`);
+    if (!document.getElementById('agendaMobileListBody')) return;
+
+    const filtrados = filtroMedico
+      ? eventos.filter((e) => e.CODEMP == filtroMedico)
+      : eventos;
+
+    indexAgendaEventos(eventos);
+    tbody.innerHTML = renderAgendaMobileRows(filtrados);
+  } catch (error) {
+    if (document.getElementById('agendaMobileListBody')) {
+      tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger py-4">${escapeHtml(error.message)}</td></tr>`;
+    }
+  }
+}
+
+function refreshAgendaViews() {
+  if (isAgendaMobileLayout()) {
+    loadAgendaMobileList(getAgendaMobileFecha());
+    return;
+  }
+  calendar?.refetchEvents();
+}
+
+function bindAgendaMobileList() {
+  const tbody = document.getElementById('agendaMobileListBody');
+  const fechaInput = document.getElementById('agendaMobileFecha');
+  if (!tbody || tbody.dataset.mobileBound === '1') return;
+
+  tbody.dataset.mobileBound = '1';
+
+  if (fechaInput && !fechaInput.value) {
+    fechaInput.value = selectedDate || localDateString();
+  }
+
+  fechaInput?.addEventListener('change', () => {
+    if (fechaInput.value) {
+      selectedDate = fechaInput.value;
+      loadAgendaMobileList(fechaInput.value);
+    }
+  });
+
+  tbody.addEventListener('click', (e) => {
+    const row = e.target.closest('tr.agenda-mobile-row[data-event-id]');
+    if (!row) return;
+    openCitaDetalleModal(row.dataset.eventId);
+  });
+}
+
+function setupAgendaLayout(initialView = 'dayGridMonth') {
+  if (!isAgendaMounted()) return;
+
+  if (isAgendaMobileLayout()) {
+    if (calendar) {
+      try {
+        calendar.destroy();
+      } catch (_) {
+        /* ignorar */
+      }
+      calendar = null;
+    }
+    loadAgendaMobileList(getAgendaMobileFecha());
+    return;
+  }
+
+  initCalendar(initialView);
+}
+
 export function renderAgenda() {
   return `
-    <div class="content-card">
+    <div class="content-card view-agenda">
       <div class="content-card-header">
         <h5><i class="fa-solid fa-calendar-days me-2 text-primary"></i>Calendario de citas</h5>
         <div class="agenda-header-actions">
@@ -739,7 +951,31 @@ export function renderAgenda() {
           <option value="">Todos los médicos</option>
         </select>
       </div>
-      <div id="calendar"></div>
+
+      <div class="agenda-desktop" id="agendaDesktop">
+        <div id="calendar"></div>
+      </div>
+
+      <div class="agenda-mobile" id="agendaMobile">
+        <div class="agenda-mobile-toolbar">
+          <label for="agendaMobileFecha" class="form-label">Fecha</label>
+          <input type="date" id="agendaMobileFecha" class="form-control">
+        </div>
+        <div class="table-responsive agenda-mobile-table-wrap">
+          <table class="table table-hover agenda-mobile-table mb-0">
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Paciente</th>
+                <th>Motivo</th>
+              </tr>
+            </thead>
+            <tbody id="agendaMobileListBody">
+              <tr><td colspan="3" class="text-center text-muted py-4">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -844,14 +1080,21 @@ export async function bindAgenda(params = {}) {
       renderFiltroMedico();
     }
 
-    initCalendar(roleConfig.initialView);
+    bindAgendaMobileList();
+    setupAgendaLayout(roleConfig.initialView);
 
     if (signal.aborted || !isAgendaMounted()) return;
     if (viewGen && !isViewMounted(viewGen)) return;
 
+    agendaMobileResizeHandler = () => {
+      if (!isAgendaMounted()) return;
+      setupAgendaLayout(roleConfig.initialView);
+    };
+    AGENDA_MOBILE_MQ.addEventListener('change', agendaMobileResizeHandler);
+
     document.getElementById('filtroMedico')?.addEventListener('change', (e) => {
       filtroMedico = e.target.value;
-      calendar?.refetchEvents();
+      refreshAgendaViews();
     }, { signal });
 
     document.getElementById('btnHorasDisponibles')?.addEventListener('click', () => {

@@ -1515,6 +1515,59 @@ body {
   flex-wrap: wrap;
 }
 
+.agenda-mobile {
+  display: none;
+}
+
+.agenda-mobile-toolbar {
+  margin-bottom: 1rem;
+}
+
+.agenda-mobile-toolbar .form-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.agenda-mobile-table-wrap {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.agenda-mobile-table thead th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.agenda-mobile-row {
+  cursor: pointer;
+  border-left: 4px solid var(--agenda-medico-color, #0ea5e9);
+}
+
+.agenda-mobile-row:hover {
+  background: rgba(14, 165, 233, 0.06);
+}
+
+.agenda-mobile-hora {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  width: 1%;
+}
+
+.agenda-mobile-paciente {
+  font-weight: 500;
+}
+
+.agenda-mobile-motivo {
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+}
+
 .cumpleaneros-header {
   flex-wrap: wrap;
   gap: 1rem;
@@ -1678,6 +1731,28 @@ body {
   cursor: default;
 }
 
+.horas-disponibles-lista .horas-slot-ocupado-clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.horas-disponibles-lista .horas-slot-ocupado-clickable:hover {
+  transform: translateY(-1px);
+  background: rgba(220, 38, 38, 0.14);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.12);
+}
+
+.cita-detalle-modal p {
+  margin: 0;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.cita-detalle-obs {
+  color: var(--color-text-muted);
+}
+
 .form-label-sm {
   font-size: 0.78rem;
   color: var(--color-text-muted);
@@ -1750,7 +1825,142 @@ body {
   color: var(--color-text-muted);
 }
 
+.pacientes-mobile {
+  display: none;
+}
+
+.paciente-mobile-card {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.5);
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.paciente-mobile-nombre {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.paciente-mobile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.84rem;
+  color: var(--color-text-muted);
+}
+
+.paciente-mobile-direccion {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
+.paciente-mobile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.orders-mobile {
+  display: none;
+}
+
+.order-mobile-card {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.5);
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.order-mobile-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.order-mobile-tratamiento {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  flex: 1;
+  line-height: 1.3;
+}
+
+.order-mobile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.order-mobile-precios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.84rem;
+  color: var(--color-text);
+}
+
+.order-mobile-fecha-fin {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.order-mobile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 767.98px) {
+  .view-pacientes .pacientes-desktop {
+    display: none;
+  }
+
+  .view-pacientes .pacientes-mobile {
+    display: block;
+  }
+
+  .view-paciente-tratamientos .orders-desktop {
+    display: none;
+  }
+
+  .view-paciente-tratamientos .orders-mobile {
+    display: block;
+  }
+}
+
 @media (max-width: 575.98px) {
+  .view-agenda .agenda-desktop {
+    display: none;
+  }
+
+  .view-agenda .agenda-mobile {
+    display: block;
+  }
+
+  .view-agenda .agenda-header-actions .btn {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.65rem;
+  }
+
   .agenda-filtros {
     flex-direction: column;
     align-items: stretch;
@@ -1813,5 +2023,54 @@ body {
   .btn-logout-topbar {
     margin-left: 0;
     padding: 0.4rem 0.55rem;
+  }
+
+  .swal2-popup.swal-popup-wide,
+  .swal2-popup.swal-popup-horas {
+    width: calc(100vw - 1rem) !important;
+    max-width: calc(100vw - 1rem);
+    padding: 1rem 0.85rem 0.85rem;
+    margin: 0.5rem;
+  }
+
+  .horas-disponibles-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .horas-disponibles-fecha {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .horas-disponibles-info {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .horas-disponibles-meta {
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .horas-disponibles-scroll {
+    max-height: calc(100dvh - 260px);
+    padding-right: 0;
+  }
+
+  .horas-disponibles-lista {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
+  }
+
+  .horas-disponibles-lista li {
+    font-size: 0.78rem;
+    padding: 0.5rem 0.35rem;
+    line-height: 1.25;
+  }
+
+  .horas-disponibles-medico {
+    font-size: 0.85rem;
   }
 }

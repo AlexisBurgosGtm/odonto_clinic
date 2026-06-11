@@ -4,6 +4,7 @@ import { showAlert, clearAlert } from '../utils/alerts.js';
 import { confirmAction, alertError, alertSuccess, openFormDialog, SwalTheme } from '../utils/swal.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import { mountNuevoFab } from '../utils/nuevo-fab.js';
+import { canManagePacientes } from '../utils/roles.js';
 import { formatLocalDateTime, localNowDatetime } from '../utils/datetime.js';
 
 let pacientes = [];
@@ -192,8 +193,6 @@ function collectExtraFields() {
 }
 
 export function renderPacientes() {
-  const isMedico = getSession()?.tipo === 'MEDICO';
-
   return `
     <div id="pacientesAlert"></div>
 
@@ -215,7 +214,7 @@ export function renderPacientes() {
         </div>
       </div>
 
-      <div class="table-responsive">
+      <div class="pacientes-desktop table-responsive">
         <table class="table table-hover crud-table mb-0">
           <thead>
             <tr>
@@ -231,6 +230,10 @@ export function renderPacientes() {
             <tr><td colspan="6" class="text-center text-muted py-4">Cargando...</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="pacientes-mobile" id="pacientesMobileList">
+        <p class="text-center text-muted py-4 mb-0">Cargando...</p>
       </div>
     </div>
   `;
@@ -328,11 +331,71 @@ function fillPacienteForm(paciente) {
   });
 }
 
+function renderPacienteAcciones(p, canManage) {
+  return `
+    <button class="btn btn-sm btn-outline-secondary btn-action" data-view="${p.CODPACIENTE}" title="Ver datos">
+      <i class="fa-solid fa-eye"></i>
+    </button>
+    <button class="btn btn-sm btn-outline-info btn-action" data-tratamientos="${p.CODPACIENTE}" title="Tratamientos">
+      <i class="fa-solid fa-tooth"></i>
+    </button>
+    <button class="btn btn-sm btn-outline-warning btn-action" data-estado-cuenta="${p.CODPACIENTE}" title="Estado de cuenta">
+      <i class="fa-solid fa-file-invoice-dollar"></i>
+    </button>
+    ${canManage ? `
+    <button class="btn btn-sm btn-outline-primary btn-action" data-edit="${p.CODPACIENTE}" title="Editar">
+      <i class="fa-solid fa-pen"></i>
+    </button>
+    <button class="btn btn-sm btn-outline-danger btn-action" data-delete="${p.CODPACIENTE}" title="Eliminar">
+      <i class="fa-solid fa-trash"></i>
+    </button>
+    ` : ''}
+  `;
+}
+
+function handlePacientesListClick(e) {
+  const viewBtn = e.target.closest('[data-view]');
+  const tratamientosBtn = e.target.closest('[data-tratamientos]');
+  const estadoCuentaBtn = e.target.closest('[data-estado-cuenta]');
+  const editBtn = e.target.closest('[data-edit]');
+  const deleteBtn = e.target.closest('[data-delete]');
+
+  if (viewBtn) {
+    const paciente = pacientes.find((p) => p.CODPACIENTE == viewBtn.dataset.view);
+    if (paciente) openPacienteDetalle(paciente);
+    return;
+  }
+
+  if (tratamientosBtn) {
+    window.location.hash = `#/pacientes/${tratamientosBtn.dataset.tratamientos}/tratamientos`;
+    return;
+  }
+
+  if (estadoCuentaBtn) {
+    window.location.hash = `#/pacientes/${estadoCuentaBtn.dataset.estadoCuenta}/estado-cuenta`;
+    return;
+  }
+
+  if (editBtn) {
+    if (!canManagePacientes(getSession()?.tipo)) return;
+    const paciente = pacientes.find((p) => p.CODPACIENTE == editBtn.dataset.edit);
+    if (paciente) openPacienteForm('edit', paciente);
+    return;
+  }
+
+  if (deleteBtn) {
+    if (!canManagePacientes(getSession()?.tipo)) return;
+    handleDelete(deleteBtn.dataset.delete);
+  }
+}
+
 function renderTable() {
   const tbody = document.getElementById('pacientesTableBody');
-  if (!tbody) return;
-
+  const mobileList = document.getElementById('pacientesMobileList');
   const filtrados = getPacientesFiltrados();
+  const canManage = canManagePacientes(getSession()?.tipo);
+
+  if (!tbody) return;
 
   if (pacientes.length === 0) {
     tbody.innerHTML = `
@@ -340,6 +403,9 @@ function renderTable() {
         <td colspan="6" class="text-center text-muted py-4">No hay pacientes registrados</td>
       </tr>
     `;
+    if (mobileList) {
+      mobileList.innerHTML = '<p class="text-center text-muted py-4 mb-0">No hay pacientes registrados</p>';
+    }
     return;
   }
 
@@ -349,10 +415,11 @@ function renderTable() {
         <td colspan="6" class="text-center text-muted py-4">No se encontraron pacientes con ese criterio</td>
       </tr>
     `;
+    if (mobileList) {
+      mobileList.innerHTML = '<p class="text-center text-muted py-4 mb-0">No se encontraron pacientes con ese criterio</p>';
+    }
     return;
   }
-
-  const isMedico = getSession()?.tipo === 'MEDICO';
 
   tbody.innerHTML = filtrados.map((p) => `
     <tr>
@@ -362,26 +429,28 @@ function renderTable() {
       <td>${p.TELEFONOS || '—'}</td>
       <td>${p.EMAIL || '—'}</td>
       <td class="text-end">
-        <button class="btn btn-sm btn-outline-secondary btn-action" data-view="${p.CODPACIENTE}" title="Ver datos">
-          <i class="fa-solid fa-eye"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-info btn-action" data-tratamientos="${p.CODPACIENTE}" title="Tratamientos">
-          <i class="fa-solid fa-tooth"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-warning btn-action" data-estado-cuenta="${p.CODPACIENTE}" title="Estado de cuenta">
-          <i class="fa-solid fa-file-invoice-dollar"></i>
-        </button>
-        ${isMedico ? '' : `
-        <button class="btn btn-sm btn-outline-primary btn-action" data-edit="${p.CODPACIENTE}" title="Editar">
-          <i class="fa-solid fa-pen"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-danger btn-action" data-delete="${p.CODPACIENTE}" title="Eliminar">
-          <i class="fa-solid fa-trash"></i>
-        </button>
-        `}
+        ${renderPacienteAcciones(p, canManage)}
       </td>
     </tr>
   `).join('');
+
+  if (mobileList) {
+    mobileList.innerHTML = filtrados.map((p) => `
+      <article class="paciente-mobile-card">
+        <div class="paciente-mobile-main">
+          <h6 class="paciente-mobile-nombre">${p.NOMBRE || '—'}</h6>
+          <p class="paciente-mobile-meta">
+            <span><i class="fa-solid fa-cake-candles me-1"></i>${formatFecha(p.NACIMIENTO)}</span>
+            ${p.TELEFONOS ? `<span><i class="fa-solid fa-phone me-1"></i>${p.TELEFONOS}</span>` : ''}
+          </p>
+          ${p.DIRECCION ? `<p class="paciente-mobile-direccion"><i class="fa-solid fa-location-dot me-1"></i>${p.DIRECCION}</p>` : ''}
+        </div>
+        <div class="paciente-mobile-actions">
+          ${renderPacienteAcciones(p, canManage)}
+        </div>
+      </article>
+    `).join('');
+  }
 }
 
 async function loadPacientes() {
@@ -416,6 +485,8 @@ async function openPacienteDetalle(paciente) {
 }
 
 async function openPacienteForm(mode, paciente = null) {
+  if (!canManagePacientes(getSession()?.tipo)) return;
+
   const isEdit = mode === 'edit';
 
   const result = await openFormDialog({
@@ -468,6 +539,8 @@ async function openPacienteForm(mode, paciente = null) {
 }
 
 async function handleDelete(codpaciente) {
+  if (!canManagePacientes(getSession()?.tipo)) return;
+
   const paciente = pacientes.find((p) => p.CODPACIENTE == codpaciente);
   const nombre = paciente?.NOMBRE || codpaciente;
 
@@ -491,7 +564,7 @@ async function handleDelete(codpaciente) {
 }
 
 export function bindPacientes() {
-  if (getSession()?.tipo !== 'MEDICO') {
+  if (canManagePacientes(getSession()?.tipo)) {
     mountNuevoFab({
       id: 'btnNuevoPaciente',
       icon: 'fa-solid fa-user-plus',
@@ -505,38 +578,8 @@ export function bindPacientes() {
     renderTable();
   });
 
-  document.getElementById('pacientesTableBody')?.addEventListener('click', (e) => {
-    const viewBtn = e.target.closest('[data-view]');
-    const tratamientosBtn = e.target.closest('[data-tratamientos]');
-    const estadoCuentaBtn = e.target.closest('[data-estado-cuenta]');
-    const editBtn = e.target.closest('[data-edit]');
-    const deleteBtn = e.target.closest('[data-delete]');
-
-    if (viewBtn) {
-      const paciente = pacientes.find((p) => p.CODPACIENTE == viewBtn.dataset.view);
-      if (paciente) openPacienteDetalle(paciente);
-      return;
-    }
-
-    if (tratamientosBtn) {
-      window.location.hash = `#/pacientes/${tratamientosBtn.dataset.tratamientos}/tratamientos`;
-      return;
-    }
-
-    if (estadoCuentaBtn) {
-      window.location.hash = `#/pacientes/${estadoCuentaBtn.dataset.estadoCuenta}/estado-cuenta`;
-      return;
-    }
-
-    if (editBtn) {
-      const paciente = pacientes.find((p) => p.CODPACIENTE == editBtn.dataset.edit);
-      if (paciente) openPacienteForm('edit', paciente);
-    }
-
-    if (deleteBtn) {
-      handleDelete(deleteBtn.dataset.delete);
-    }
-  });
+  document.getElementById('pacientesTableBody')?.addEventListener('click', handlePacientesListClick);
+  document.getElementById('pacientesMobileList')?.addEventListener('click', handlePacientesListClick);
 
   loadPacientes();
 }

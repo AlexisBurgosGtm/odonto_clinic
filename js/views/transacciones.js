@@ -6,6 +6,7 @@ import { sanitizeText } from '../utils/sanitize.js';
 import { isViewMounted } from '../utils/view.js';
 import { mountNuevoFab } from '../utils/nuevo-fab.js';
 import { printComprobantePago } from '../utils/print-comprobante-pago.js';
+import { localDateString } from '../utils/datetime.js';
 
 let transacciones = [];
 let pacientes = [];
@@ -30,13 +31,6 @@ function formatFecha(fecha) {
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
-function tipoBadge(tipo) {
-  if (tipo === 'ABONO') {
-    return '<span class="badge-tipo badge-tipo-abono">ABONO</span>';
-  }
-  return '<span class="badge-tipo badge-tipo-pago">PAGO</span>';
-}
-
 function transaccionFormHtml(isEdit) {
   const pacienteOptions = pacientes.map((p) => `
     <option value="${p.CODPACIENTE}">${p.NOMBRE || `Paciente #${p.CODPACIENTE}`}</option>
@@ -54,13 +48,6 @@ function transaccionFormHtml(isEdit) {
       <div class="mb-3">
         <label class="form-label">Fecha <span class="text-danger">*</span></label>
         <input type="date" id="swal-fecha" class="form-control">
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Tipo <span class="text-danger">*</span></label>
-        <select id="swal-tipo" class="form-select">
-          <option value="PAGO">PAGO — Salida</option>
-          <option value="ABONO">ABONO — Saldo a favor</option>
-        </select>
       </div>
       <div class="mb-3">
         <label class="form-label">Monto <span class="text-danger">*</span></label>
@@ -84,7 +71,7 @@ function renderTable() {
   if (transacciones.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6" class="text-center text-muted py-4">
+        <td colspan="5" class="text-center text-muted py-4">
           No hay transacciones del ${formatFecha(fechaInicio)} al ${formatFecha(fechaFin)}
         </td>
       </tr>
@@ -96,8 +83,7 @@ function renderTable() {
     <tr>
       <td class="nowrap">${formatFecha(t.FECHA)}</td>
       <td>${t.PACIENTE || '—'}</td>
-      <td>${tipoBadge(t.TIPO)}</td>
-      <td class="num ${t.TIPO === 'PAGO' ? 'text-pago' : 'text-abono'}">${formatPrecio(t.MONTO)}</td>
+      <td class="num text-abono">${formatPrecio(t.MONTO)}</td>
       <td>${t.OBS || '—'}</td>
       <td class="text-end transacciones-actions">
         <button class="btn btn-sm btn-outline-secondary btn-action" data-print="${t.ID}" title="Reimprimir comprobante">
@@ -127,29 +113,26 @@ function imprimirComprobante(item) {
 
 async function openTransaccionForm(mode, item = null) {
   const isEdit = mode === 'edit';
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = localDateString();
   let transaccionCreada = null;
 
   const result = await openFormDialog({
-    title: isEdit ? 'Editar transacción' : 'Nueva transacción',
+    title: isEdit ? 'Editar abono' : 'Nuevo abono',
     html: transaccionFormHtml(isEdit),
     width: '480px',
     didOpen: () => {
       if (isEdit) {
         document.getElementById('swal-codpaciente').value = item.CODPACIENTE || '';
         document.getElementById('swal-fecha').value = String(item.FECHA).split('T')[0];
-        document.getElementById('swal-tipo').value = item.TIPO || 'PAGO';
         document.getElementById('swal-monto').value = item.MONTO ?? '';
         document.getElementById('swal-obs').value = item.OBS || '';
       } else {
         document.getElementById('swal-fecha').value = hoy;
-        document.getElementById('swal-tipo').value = 'PAGO';
       }
     },
     preConfirm: async () => {
       const CODPACIENTE = document.getElementById('swal-codpaciente').value;
       const FECHA = document.getElementById('swal-fecha').value;
-      const TIPO = document.getElementById('swal-tipo').value;
       const MONTO = document.getElementById('swal-monto').value;
       const OBS = sanitizeText(document.getElementById('swal-obs').value, { maxLength: 500 });
 
@@ -171,7 +154,7 @@ async function openTransaccionForm(mode, item = null) {
       const body = {
         CODPACIENTE: Number(CODPACIENTE),
         FECHA,
-        TIPO,
+        TIPO: 'ABONO',
         MONTO: Number(MONTO),
         OBS,
       };
@@ -199,7 +182,7 @@ async function openTransaccionForm(mode, item = null) {
     imprimirComprobante({ ...transaccionCreada, PACIENTE: pacienteNombre });
   }
 
-  await alertSuccess(isEdit ? 'Transacción actualizada' : 'Transacción registrada');
+  await alertSuccess(isEdit ? 'Abono actualizado' : 'Abono registrado');
 }
 
 async function handleDelete(id) {
@@ -226,7 +209,7 @@ async function handleDelete(id) {
 }
 
 export function renderTransacciones() {
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = localDateString();
   fechaInicio = hoy;
   fechaFin = hoy;
 
@@ -235,7 +218,7 @@ export function renderTransacciones() {
 
     <div class="content-card view-transacciones">
       <div class="content-card-header transacciones-header">
-        <h5><i class="fa-solid fa-money-bill-transfer me-2 text-primary"></i>Transacciones</h5>
+        <h5><i class="fa-solid fa-money-bill-transfer me-2 text-primary"></i>Abonos</h5>
       </div>
 
       <div class="transacciones-filtros">
@@ -255,14 +238,13 @@ export function renderTransacciones() {
             <tr>
               <th>Fecha</th>
               <th>Paciente</th>
-              <th>Tipo</th>
               <th>Monto</th>
               <th>Observaciones</th>
               <th class="text-end" style="width: 150px;">Acciones</th>
             </tr>
           </thead>
           <tbody id="transaccionesTableBody">
-            <tr><td colspan="6" class="text-center text-muted py-4">Cargando...</td></tr>
+            <tr><td colspan="5" class="text-center text-muted py-4">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -297,7 +279,7 @@ export async function bindTransacciones(params = {}) {
     mountNuevoFab({
       id: 'btnNuevaTransaccion',
       icon: 'fa-solid fa-plus',
-      title: 'Nueva transacción',
+      title: 'Nuevo abono',
       onClick: () => openTransaccionForm('create'),
     });
 

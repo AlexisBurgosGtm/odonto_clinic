@@ -3,7 +3,7 @@ const { pool } = require('../db/mysql');
 
 const router = express.Router();
 
-const TIPOS_VALIDOS = ['PAGO', 'ABONO'];
+const TIPOS_VALIDOS = ['ABONO'];
 
 const TRANSACCION_FIELDS = [
   'ID', 'EMPNIT', 'CODPACIENTE', 'FECHA', 'TIPO', 'MONTO', 'OBS',
@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
               p.NOMBRE AS PACIENTE
        FROM transacciones t
        LEFT JOIN pacientes p ON p.CODPACIENTE = t.CODPACIENTE AND p.EMPNIT = t.EMPNIT
-       WHERE t.EMPNIT = ? AND t.FECHA >= ? AND t.FECHA <= ?
+       WHERE t.EMPNIT = ? AND t.TIPO = 'ABONO' AND t.FECHA >= ? AND t.FECHA <= ?
        ORDER BY t.FECHA DESC, t.ID DESC`,
       [empnit, fechaInicio, fechaFin]
     );
@@ -60,32 +60,66 @@ router.get('/paciente/:codpaciente', async (req, res) => {
       return res.status(404).json({ error: 'Paciente no encontrado' });
     }
 
-    const [rows] = await pool.query(
+    const [abonos] = await pool.query(
       `SELECT t.ID, t.EMPNIT, t.CODPACIENTE, t.FECHA, t.TIPO, t.MONTO, t.OBS
        FROM transacciones t
-       WHERE t.EMPNIT = ? AND t.CODPACIENTE = ?
+       WHERE t.EMPNIT = ? AND t.CODPACIENTE = ? AND t.TIPO = 'ABONO'
        ORDER BY t.FECHA ASC, t.ID ASC`,
+      [empnit, req.params.codpaciente]
+    );
+
+    const [tratamientos] = await pool.query(
+      `SELECT o.ID, o.FECHA_REALIZADO, o.PRECIO_FINAL, o.DESPROD, o.PIEZA, o.OBS
+       FROM orders o
+       WHERE o.EMPNIT = ? AND o.CODPACIENTE = ? AND o.REALIZADO = 'SI'
+       ORDER BY o.FECHA_REALIZADO ASC, o.ID ASC`,
       [empnit, req.params.codpaciente]
     );
 
     const nombrePaciente = pacienteRows[0].NOMBRE;
 
+    const movimientos = [
+      ...abonos.map((row) => ({
+        ID: row.ID,
+        FECHA: row.FECHA,
+        TIPO: 'ABONO',
+        MONTO: row.MONTO,
+        OBS: row.OBS,
+        ORIGEN: 'transaccion',
+      })),
+      ...tratamientos.map((row) => {
+        const detalle = [
+          row.DESPROD ? `Tratamiento: ${row.DESPROD}` : 'Tratamiento finalizado',
+          row.PIEZA ? `Pieza ${row.PIEZA}` : '',
+          row.OBS || '',
+        ].filter(Boolean).join(' · ');
+
+        return {
+          ID: `O-${row.ID}`,
+          FECHA: row.FECHA_REALIZADO,
+          TIPO: 'PAGO',
+          MONTO: row.PRECIO_FINAL,
+          OBS: detalle || null,
+          ORIGEN: 'tratamiento',
+        };
+      }),
+    ].sort((a, b) => {
+      const fechaA = String(a.FECHA || '');
+      const fechaB = String(b.FECHA || '');
+      if (fechaA !== fechaB) return fechaA.localeCompare(fechaB);
+      return String(a.ID).localeCompare(String(b.ID));
+    });
+
     let saldo = 0;
-    const historial = rows.map((row) => {
+    const historial = movimientos.map((row) => {
       const monto = Number(row.MONTO) || 0;
       if (row.TIPO === 'ABONO') saldo += monto;
       else if (row.TIPO === 'PAGO') saldo -= monto;
-
       return { ...row, SALDO: saldo };
     });
 
-    const totalAbonos = rows
-      .filter((r) => r.TIPO === 'ABONO')
-      .reduce((sum, r) => sum + (Number(r.MONTO) || 0), 0);
-
-    const totalPagos = rows
-      .filter((r) => r.TIPO === 'PAGO')
-      .reduce((sum, r) => sum + (Number(r.MONTO) || 0), 0);
+    const totalAbonos = abonos.reduce((sum, r) => sum + (Number(r.MONTO) || 0), 0);
+    const totalPagos = tratamientos.reduce((sum, r) => sum + (Number(r.PRECIO_FINAL) || 0), 0);
 
     res.json({
       paciente: nombrePaciente,
@@ -115,8 +149,8 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'La fecha es requerida' });
   }
 
-  if (!TIPO || !TIPOS_VALIDOS.includes(TIPO)) {
-    return res.status(400).json({ error: 'El tipo debe ser PAGO o ABONO' });
+  if (TIPO && TIPO !== 'ABONO') {
+    return res.status(400).json({ error: 'Solo se permiten transacciones de tipo ABONO' });
   }
 
   if (MONTO === undefined || MONTO === null || MONTO === '') {
@@ -126,6 +160,8 @@ router.post('/', async (req, res) => {
   if (Number(MONTO) <= 0) {
     return res.status(400).json({ error: 'El monto debe ser mayor a cero' });
   }
+
+  const tipoAbono = 'ABONO';
 
   try {
     const [paciente] = await pool.query(
@@ -144,7 +180,7 @@ router.post('/', async (req, res) => {
         empnit,
         CODPACIENTE,
         FECHA,
-        TIPO,
+        tipoAbono,
         MONTO,
         OBS?.trim() || null,
       ]
@@ -160,7 +196,7 @@ router.post('/', async (req, res) => {
       EMPNIT: empnit,
       CODPACIENTE,
       FECHA,
-      TIPO,
+      TIPO: tipoAbono,
       MONTO,
       OBS: OBS?.trim() || null,
       PACIENTE: pacienteInfo[0]?.NOMBRE || null,
@@ -185,8 +221,8 @@ router.put('/:id', async (req, res) => {
     return res.status(400).json({ error: 'La fecha es requerida' });
   }
 
-  if (!TIPO || !TIPOS_VALIDOS.includes(TIPO)) {
-    return res.status(400).json({ error: 'El tipo debe ser PAGO o ABONO' });
+  if (TIPO && TIPO !== 'ABONO') {
+    return res.status(400).json({ error: 'Solo se permiten transacciones de tipo ABONO' });
   }
 
   if (MONTO === undefined || MONTO === null || MONTO === '') {
@@ -200,9 +236,9 @@ router.put('/:id', async (req, res) => {
   try {
     const [result] = await pool.query(
       `UPDATE transacciones
-       SET CODPACIENTE = ?, FECHA = ?, TIPO = ?, MONTO = ?, OBS = ?
-       WHERE ID = ? AND EMPNIT = ?`,
-      [CODPACIENTE, FECHA, TIPO, MONTO, OBS?.trim() || null, req.params.id, empnit]
+       SET CODPACIENTE = ?, FECHA = ?, TIPO = 'ABONO', MONTO = ?, OBS = ?
+       WHERE ID = ? AND EMPNIT = ? AND TIPO = 'ABONO'`,
+      [CODPACIENTE, FECHA, MONTO, OBS?.trim() || null, req.params.id, empnit]
     );
 
     if (result.affectedRows === 0) {
@@ -222,7 +258,7 @@ router.delete('/:id', async (req, res) => {
 
   try {
     const [result] = await pool.query(
-      'DELETE FROM transacciones WHERE ID = ? AND EMPNIT = ?',
+      "DELETE FROM transacciones WHERE ID = ? AND EMPNIT = ? AND TIPO = 'ABONO'",
       [req.params.id, empnit]
     );
 

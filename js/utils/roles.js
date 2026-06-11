@@ -76,6 +76,10 @@ export function getDefaultRoute(tipo) {
 
 
 
+export function canManagePacientes(tipo) {
+  return tipo === 'GERENTE' || tipo === 'SECRETARIA';
+}
+
 export function isRouteAllowed(tipo, path) {
 
   const role = tipo || 'GERENTE';

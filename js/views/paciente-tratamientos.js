@@ -686,8 +686,51 @@ function printOrdersList() {
   }
 }
 
+function renderOrderAcciones(o) {
+  const pendiente = o.REALIZADO !== 'SI';
+
+  return `
+    ${pendiente ? `
+      <button class="btn btn-sm btn-outline-success btn-action" data-finalizar="${o.ID}" title="Finalizar">
+        Finalizar
+      </button>
+    ` : ''}
+    ${pendiente ? `
+      <button class="btn btn-sm btn-outline-primary btn-action" data-edit="${o.ID}" title="Editar">
+        <i class="fa-solid fa-pen"></i>
+      </button>
+    ` : ''}
+    <button class="btn btn-sm btn-outline-danger btn-action" data-delete="${o.ID}" title="Eliminar">
+      <i class="fa-solid fa-trash"></i>
+    </button>
+  `;
+}
+
+function handleOrdersListClick(e) {
+  const finalizarBtn = e.target.closest('[data-finalizar]');
+  const editBtn = e.target.closest('[data-edit]');
+  const deleteBtn = e.target.closest('[data-delete]');
+
+  if (finalizarBtn) {
+    const order = orders.find((o) => o.ID == finalizarBtn.dataset.finalizar);
+    if (order) openFinalizarForm(order);
+    return;
+  }
+
+  if (editBtn) {
+    const order = orders.find((o) => o.ID == editBtn.dataset.edit);
+    if (order) openEditOrderForm(order);
+    return;
+  }
+
+  if (deleteBtn) {
+    handleDelete(deleteBtn.dataset.delete);
+  }
+}
+
 function renderOrdersTable() {
   const tbody = document.getElementById('ordersTableBody');
+  const mobileList = document.getElementById('ordersMobileList');
   if (!tbody) return;
 
   const filtrados = getOrdersFiltrados();
@@ -698,6 +741,9 @@ function renderOrdersTable() {
         <td colspan="9" class="text-center text-muted py-4">No hay tratamientos registrados para este paciente</td>
       </tr>
     `;
+    if (mobileList) {
+      mobileList.innerHTML = '<p class="text-center text-muted py-4 mb-0">No hay tratamientos registrados para este paciente</p>';
+    }
     updateTotalDisplay();
     return;
   }
@@ -708,41 +754,58 @@ function renderOrdersTable() {
         <td colspan="9" class="text-center text-muted py-4">No hay tratamientos con el filtro seleccionado</td>
       </tr>
     `;
+    if (mobileList) {
+      mobileList.innerHTML = '<p class="text-center text-muted py-4 mb-0">No hay tratamientos con el filtro seleccionado</p>';
+    }
     updateTotalDisplay();
     return;
   }
 
-  tbody.innerHTML = filtrados.map((o) => {
-    const pendiente = o.REALIZADO !== 'SI';
+  tbody.innerHTML = filtrados.map((o) => `
+    <tr>
+      <td>${formatFecha(o.FECHA)}</td>
+      <td>${o.PIEZA || '—'}</td>
+      <td>${o.CODPROD || '—'}</td>
+      <td>${o.DESPROD || '—'}</td>
+      <td>${formatPrecio(o.PRECIO)}</td>
+      <td>${estadoBadge(o.REALIZADO)}</td>
+      <td>${formatFecha(o.FECHA_REALIZADO)}</td>
+      <td>${o.REALIZADO === 'SI' ? formatPrecio(o.PRECIO_FINAL) : '—'}</td>
+      <td class="text-end orders-actions">
+        ${renderOrderAcciones(o)}
+      </td>
+    </tr>
+  `).join('');
 
-    return `
-      <tr>
-        <td>${formatFecha(o.FECHA)}</td>
-        <td>${o.PIEZA || '—'}</td>
-        <td>${o.CODPROD || '—'}</td>
-        <td>${o.DESPROD || '—'}</td>
-        <td>${formatPrecio(o.PRECIO)}</td>
-        <td>${estadoBadge(o.REALIZADO)}</td>
-        <td>${formatFecha(o.FECHA_REALIZADO)}</td>
-        <td>${o.REALIZADO === 'SI' ? formatPrecio(o.PRECIO_FINAL) : '—'}</td>
-        <td class="text-end orders-actions">
-          ${pendiente ? `
-            <button class="btn btn-sm btn-outline-success btn-action" data-finalizar="${o.ID}" title="Finalizar">
-              Finalizar
-            </button>
-          ` : ''}
-          ${pendiente ? `
-            <button class="btn btn-sm btn-outline-primary btn-action" data-edit="${o.ID}" title="Editar">
-              <i class="fa-solid fa-pen"></i>
-            </button>
-          ` : ''}
-          <button class="btn btn-sm btn-outline-danger btn-action" data-delete="${o.ID}" title="Eliminar">
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </td>
-      </tr>
-    `;
-  }).join('');
+  if (mobileList) {
+    mobileList.innerHTML = filtrados.map((o) => {
+      const finalizado = o.REALIZADO === 'SI';
+
+      return `
+        <article class="order-mobile-card">
+          <div class="order-mobile-main">
+            <div class="order-mobile-header">
+              <h6 class="order-mobile-tratamiento">${o.DESPROD || o.CODPROD || '—'}</h6>
+              ${estadoBadge(o.REALIZADO)}
+            </div>
+            <p class="order-mobile-meta">
+              <span><i class="fa-solid fa-calendar me-1"></i>${formatFecha(o.FECHA)}</span>
+              ${o.PIEZA ? `<span><i class="fa-solid fa-tooth me-1"></i>Pieza ${o.PIEZA}</span>` : ''}
+              ${o.CODPROD ? `<span><i class="fa-solid fa-barcode me-1"></i>${o.CODPROD}</span>` : ''}
+            </p>
+            <p class="order-mobile-precios">
+              <span>Precio: <strong>${formatPrecio(o.PRECIO)}</strong></span>
+              ${finalizado ? `<span>Final: <strong>${formatPrecio(o.PRECIO_FINAL)}</strong></span>` : ''}
+            </p>
+            ${finalizado ? `<p class="order-mobile-fecha-fin"><i class="fa-solid fa-flag-checkered me-1"></i>Finalizado: ${formatFecha(o.FECHA_REALIZADO)}</p>` : ''}
+          </div>
+          <div class="order-mobile-actions">
+            ${renderOrderAcciones(o)}
+          </div>
+        </article>
+      `;
+    }).join('');
+  }
 
   updateTotalDisplay();
 }
@@ -1026,7 +1089,7 @@ export function renderPacienteTratamientos() {
         </div>
       </div>
 
-      <div class="table-responsive">
+      <div class="orders-desktop table-responsive">
         <table class="table table-hover crud-table mb-0">
           <thead>
             <tr>
@@ -1045,6 +1108,10 @@ export function renderPacienteTratamientos() {
             <tr><td colspan="9" class="text-center text-muted py-4">Cargando...</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="orders-mobile" id="ordersMobileList">
+        <p class="text-center text-muted py-4 mb-0">Cargando...</p>
       </div>
     </div>
   `;
@@ -1075,25 +1142,8 @@ export async function bindPacienteTratamientos(params = {}) {
 
   mountPrintFab();
 
-  document.getElementById('ordersTableBody')?.addEventListener('click', (e) => {
-    const finalizarBtn = e.target.closest('[data-finalizar]');
-    const editBtn = e.target.closest('[data-edit]');
-    const deleteBtn = e.target.closest('[data-delete]');
-
-    if (finalizarBtn) {
-      const order = orders.find((o) => o.ID == finalizarBtn.dataset.finalizar);
-      if (order) openFinalizarForm(order);
-    }
-
-    if (editBtn) {
-      const order = orders.find((o) => o.ID == editBtn.dataset.edit);
-      if (order) openEditOrderForm(order);
-    }
-
-    if (deleteBtn) {
-      handleDelete(deleteBtn.dataset.delete);
-    }
-  });
+  document.getElementById('ordersTableBody')?.addEventListener('click', handleOrdersListClick);
+  document.getElementById('ordersMobileList')?.addEventListener('click', handleOrdersListClick);
 
   try {
     await loadData(params.viewGen);
