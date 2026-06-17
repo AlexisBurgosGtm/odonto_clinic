@@ -20,6 +20,8 @@ import { renderPacienteEstadoCuenta, bindPacienteEstadoCuenta } from './views/pa
 import { renderEmpleados, bindEmpleados } from './views/empleados.js';
 import { renderEmpresas, bindEmpresas } from './views/empresas.js';
 import { renderConfiguraciones, bindConfiguraciones } from './views/configuraciones.js';
+import { renderGastos, bindGastos } from './views/gastos.js';
+import { renderReportes, bindReportes } from './views/reportes.js';
 import { alertError, confirmAction } from './utils/swal.js';
 import { cleanupFloatingUi } from './utils/floating-ui.js';
 import { initThemeSystem } from './utils/themes.js';
@@ -43,6 +45,8 @@ const routes = {
     bind: bindPacienteEstadoCuenta,
   },
   '/transacciones':   { title: 'Transacciones',   render: renderTransacciones, bind: bindTransacciones },
+  '/gastos':          { title: 'Gastos',          render: renderGastos, bind: bindGastos },
+  '/reportes':        { title: 'Reportes',        render: renderReportes, bind: bindReportes },
   '/tratamientos':    { title: 'Tratamientos',    render: renderTratamientos, bind: bindTratamientos },
   '/empleados':       { title: 'Empleados',       render: renderEmpleados, bind: bindEmpleados },
   '/empresas':        { title: 'Empresas',        render: renderEmpresas, bind: bindEmpresas },

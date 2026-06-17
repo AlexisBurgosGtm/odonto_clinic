@@ -148,12 +148,24 @@ export const api = {
   },
 
   dashboard: {
-    stats: ({ empnit, fecha } = {}) => {
+    stats: ({ empnit, fechaInicio, fechaFin } = {}) => {
       const params = new URLSearchParams();
       if (empnit) params.set('empnit', empnit);
-      if (fecha) params.set('fecha', fecha);
+      if (fechaInicio) params.set('fechaInicio', fechaInicio);
+      if (fechaFin) params.set('fechaFin', fechaFin);
       const qs = params.toString();
       return request(`/api/dashboard/stats${qs ? `?${qs}` : ''}`);
+    },
+  },
+
+  reportes: {
+    get: ({ mes, anio, tipo } = {}) => {
+      const params = new URLSearchParams();
+      if (mes) params.set('mes', mes);
+      if (anio) params.set('anio', anio);
+      if (tipo) params.set('tipo', tipo);
+      const qs = params.toString();
+      return request(`/api/reportes${qs ? `?${qs}` : ''}`);
     },
   },
 
@@ -164,5 +176,27 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(body),
       }),
+  },
+
+  gastos: {
+    list: ({ mes, anio } = {}) => {
+      const params = new URLSearchParams();
+      if (mes) params.set('mes', mes);
+      if (anio) params.set('anio', anio);
+      const qs = params.toString();
+      return request(`/api/gastos${qs ? `?${qs}` : ''}`);
+    },
+    create: (body) => request('/api/gastos', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id, body) =>
+      request(`/api/gastos/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    delete: (id) => request(`/api/gastos/${id}`, { method: 'DELETE' }),
+  },
+
+  gastosTipos: {
+    list: () => request('/api/gastos-tipos'),
+    create: (body) => request('/api/gastos-tipos', { method: 'POST', body: JSON.stringify(body) }),
+    update: (codtipo, body) =>
+      request(`/api/gastos-tipos/${codtipo}`, { method: 'PUT', body: JSON.stringify(body) }),
+    delete: (codtipo) => request(`/api/gastos-tipos/${codtipo}`, { method: 'DELETE' }),
   },
 };

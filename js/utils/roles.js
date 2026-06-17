@@ -10,6 +10,10 @@ const MENU_ITEMS = [
 
   { path: '/transacciones',   label: 'Transacciones', icon: 'fa-solid fa-money-bill-transfer', roles: ['GERENTE', 'SECRETARIA'] },
 
+  { path: '/gastos',          label: 'Gastos',        icon: 'fa-solid fa-receipt', roles: ['GERENTE'] },
+
+  { path: '/reportes',        label: 'Reportes',      icon: 'fa-solid fa-file-lines', roles: ['GERENTE'] },
+
   { path: '/tratamientos',    label: 'Tratamientos',  icon: 'fa-solid fa-tooth', roles: ['GERENTE', 'SECRETARIA'] },
 
   { path: '/empleados',       label: 'Empleados',     icon: 'fa-solid fa-user-doctor', roles: ['GERENTE'] },

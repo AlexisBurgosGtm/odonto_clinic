@@ -2,6 +2,12 @@
  * Fechas/horas en zona horaria local del dispositivo (sin depender del host).
  */
 
+export function monthStartDate(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  return localDateString(new Date(d.getFullYear(), d.getMonth(), 1));
+}
+
 export function localDateString(date = new Date()) {
   const d = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(d.getTime())) return '';

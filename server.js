@@ -33,6 +33,9 @@ app.use('/api/piezas', require('./routes/piezas'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/transacciones', require('./routes/transacciones'));
+app.use('/api/gastos-tipos', require('./routes/gastos-tipos'));
+app.use('/api/gastos', require('./routes/gastos'));
+app.use('/api/reportes', require('./routes/reportes'));
 app.use('/api/config', require('./routes/config'));
 
 app.get('/manifest.webmanifest', (_req, res) => {

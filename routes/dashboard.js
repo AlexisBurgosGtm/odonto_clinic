@@ -12,59 +12,58 @@ function getEmpnit(req, res) {
   return empnit;
 }
 
+function todayDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function monthStart() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
 router.get('/stats', async (req, res) => {
   const empnit = getEmpnit(req, res);
   if (!empnit) return;
 
-  const fecha = req.query.fecha;
-  if (!fecha) {
-    return res.status(400).json({ error: 'La fecha es requerida' });
+  const fechaInicio = req.query.fechaInicio || monthStart();
+  const fechaFin = req.query.fechaFin || todayDate();
+
+  if (fechaInicio > fechaFin) {
+    return res.status(400).json({ error: 'La fecha inicial no puede ser posterior a la final' });
   }
 
   try {
     const [[ingresos]] = await pool.query(
       `SELECT COALESCE(SUM(MONTO), 0) AS total
        FROM transacciones
-       WHERE EMPNIT = ? AND TIPO = 'ABONO' AND DATE(FECHA) = ?`,
-      [empnit, fecha]
+       WHERE EMPNIT = ? AND TIPO = 'ABONO' AND DATE(FECHA) >= ? AND DATE(FECHA) <= ?`,
+      [empnit, fechaInicio, fechaFin]
     );
 
     const [[citas]] = await pool.query(
       `SELECT COUNT(*) AS total
        FROM agenda
-       WHERE EMPNIT = ? AND DATE(FECHA) = ?`,
-      [empnit, fecha]
+       WHERE EMPNIT = ? AND DATE(FECHA) >= ? AND DATE(FECHA) <= ?`,
+      [empnit, fechaInicio, fechaFin]
     );
 
-    const [[pacientes]] = await pool.query(
-      'SELECT COUNT(*) AS total FROM pacientes WHERE EMPNIT = ?',
-      [empnit]
+    const [[gastos]] = await pool.query(
+      `SELECT COALESCE(SUM(IMPORTE), 0) AS total
+       FROM gastos
+       WHERE EMPNIT = ? AND DATE(FECHA) >= ? AND DATE(FECHA) <= ?`,
+      [empnit, fechaInicio, fechaFin]
     );
 
-    const [[pendientes]] = await pool.query(
-      `SELECT COUNT(*) AS total
-       FROM orders
-       WHERE EMPNIT = ? AND REALIZADO = 'NO'`,
-      [empnit]
-    );
-
-    const [[empleados]] = await pool.query(
-      `SELECT COUNT(*) AS total
-       FROM empleados
-       WHERE EMPNIT = ? AND HABILITADO = 'SI'`,
-      [empnit]
-    );
-
-    const [citasDia] = await pool.query(
+    const [citasPeriodo] = await pool.query(
       `SELECT a.ID, a.FECHA, a.FECHA_FIN, a.MOTIVO,
               e.EMPLEADO AS MEDICO, p.NOMBRE AS PACIENTE
        FROM agenda a
        LEFT JOIN empleados e ON e.CODEMP = a.CODEMP AND e.EMPNIT = a.EMPNIT
        LEFT JOIN pacientes p ON p.CODPACIENTE = a.CODPACIENTE AND p.EMPNIT = a.EMPNIT
-       WHERE a.EMPNIT = ? AND DATE(a.FECHA) = ?
+       WHERE a.EMPNIT = ? AND DATE(a.FECHA) >= ? AND DATE(a.FECHA) <= ?
        ORDER BY a.FECHA ASC
-       LIMIT 20`,
-      [empnit, fecha]
+       LIMIT 50`,
+      [empnit, fechaInicio, fechaFin]
     );
 
     const [ingresosDetalle] = await pool.query(
@@ -72,21 +71,20 @@ router.get('/stats', async (req, res) => {
               p.NOMBRE AS PACIENTE
        FROM transacciones t
        LEFT JOIN pacientes p ON p.CODPACIENTE = t.CODPACIENTE AND p.EMPNIT = t.EMPNIT
-       WHERE t.EMPNIT = ? AND t.TIPO = 'ABONO' AND DATE(t.FECHA) = ?
+       WHERE t.EMPNIT = ? AND t.TIPO = 'ABONO' AND DATE(t.FECHA) >= ? AND DATE(t.FECHA) <= ?
        ORDER BY t.FECHA DESC, t.ID DESC
-       LIMIT 15`,
-      [empnit, fecha]
+       LIMIT 50`,
+      [empnit, fechaInicio, fechaFin]
     );
 
     res.json({
-      fecha,
+      fechaInicio,
+      fechaFin,
       empnit,
-      ingresos_dia: Number(ingresos.total) || 0,
-      citas_hoy: Number(citas.total) || 0,
-      pacientes: Number(pacientes.total) || 0,
-      tratamientos_pendientes: Number(pendientes.total) || 0,
-      empleados_activos: Number(empleados.total) || 0,
-      citas: citasDia,
+      ingresos_periodo: Number(ingresos.total) || 0,
+      citas_periodo: Number(citas.total) || 0,
+      gastos_periodo: Number(gastos.total) || 0,
+      citas: citasPeriodo,
       ingresos: ingresosDetalle,
     });
   } catch (error) {
