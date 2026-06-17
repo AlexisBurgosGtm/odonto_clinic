@@ -1361,6 +1361,10 @@ body {
   box-shadow: 0 10px 28px rgba(14, 165, 233, 0.42);
 }
 
+body:has(.btn-nuevo-fab):has(.btn-print-fab) .btn-nuevo-fab {
+  bottom: 5.25rem;
+}
+
 .orders-actions {
   white-space: nowrap;
 }

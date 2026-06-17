@@ -1,10 +1,11 @@
 import { api } from '../services/api.js';
 import { getSession } from '../services/session.js';
 import { showAlert, clearAlert } from '../utils/alerts.js';
-import { confirmAction, alertError, alertSuccess, openFormDialog } from '../utils/swal.js';
+import { confirmAction, alertError, alertSuccess, openFormDialog, SwalTheme } from '../utils/swal.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import { isViewMounted } from '../utils/view.js';
 import { removePrintFab } from '../utils/floating-ui.js';
+import { mountNuevoFab } from '../utils/nuevo-fab.js';
 
 let codpacienteActual = null;
 let pacienteActual = null;
@@ -167,8 +168,8 @@ function finalizarFormHtml(order, medicos, session) {
   `;
 }
 
-function renderProductoSuggestions(items) {
-  const list = document.getElementById('productoSuggestions');
+function renderProductoSuggestions(items, listId = 'productoSuggestions') {
+  const list = document.getElementById(listId);
   if (!list) return;
 
   if (items.length === 0) {
@@ -189,8 +190,84 @@ function renderProductoSuggestions(items) {
   list.classList.add('open');
 }
 
-function hideProductoSuggestions() {
-  document.getElementById('productoSuggestions')?.classList.remove('open');
+function hideProductoSuggestions(listId = 'productoSuggestions') {
+  document.getElementById(listId)?.classList.remove('open');
+}
+
+function nuevoTratamientoPickerHtml() {
+  return `
+    <div class="swal-form text-start">
+      <label class="form-label" for="swal-producto-buscar">Buscar tratamiento</label>
+      <input
+        type="search"
+        id="swal-producto-buscar"
+        class="form-control"
+        placeholder="Escriba al menos 3 caracteres..."
+        autocomplete="off"
+      >
+      <ul class="paciente-suggestions mt-2" id="swal-producto-suggestions"></ul>
+    </div>
+  `;
+}
+
+function bindNuevoTratamientoPicker() {
+  const input = document.getElementById('swal-producto-buscar');
+  const list = document.getElementById('swal-producto-suggestions');
+  if (!input || !list) return;
+
+  input.addEventListener('input', () => {
+    const query = input.value;
+    if (query.trim().length < 3) {
+      hideProductoSuggestions('swal-producto-suggestions');
+      return;
+    }
+    renderProductoSuggestions(filterProductos(query), 'swal-producto-suggestions');
+  });
+
+  input.addEventListener('focus', () => {
+    if (input.value.trim().length >= 3) {
+      renderProductoSuggestions(filterProductos(input.value), 'swal-producto-suggestions');
+    }
+  });
+
+  list.addEventListener('mousedown', async (e) => {
+    const btn = e.target.closest('.producto-suggestion-item');
+    if (!btn) return;
+
+    const producto = productos.find((p) => p.ID == btn.dataset.id);
+    if (!producto) return;
+
+    Swal.close();
+    await openAddOrderForm(producto);
+  });
+
+  setTimeout(() => input.focus(), 80);
+}
+
+async function openNuevoTratamientoPicker() {
+  if (productos.length === 0) {
+    await alertError('No hay tratamientos registrados en el catálogo');
+    return;
+  }
+
+  await SwalTheme.fire({
+    title: 'Nuevo tratamiento',
+    html: nuevoTratamientoPickerHtml(),
+    width: '520px',
+    showConfirmButton: false,
+    showCancelButton: true,
+    cancelButtonText: 'Cerrar',
+    didOpen: bindNuevoTratamientoPicker,
+  });
+}
+
+function mountNuevoTratamientoFab() {
+  mountNuevoFab({
+    id: 'btnNuevoTratamientoPaciente',
+    icon: 'fa-solid fa-plus',
+    title: 'Nuevo tratamiento',
+    onClick: () => openNuevoTratamientoPicker(),
+  });
 }
 
 function sortOrdersAsc(list) {
@@ -1141,6 +1218,10 @@ export async function bindPacienteTratamientos(params = {}) {
   });
 
   mountPrintFab();
+
+  if (getSession()?.tipo === 'MEDICO') {
+    mountNuevoTratamientoFab();
+  }
 
   document.getElementById('ordersTableBody')?.addEventListener('click', handleOrdersListClick);
   document.getElementById('ordersMobileList')?.addEventListener('click', handleOrdersListClick);
