@@ -2,6 +2,7 @@ import { api } from '../services/api.js';
 import { getSession } from '../services/session.js';
 import { showAlert, clearAlert } from '../utils/alerts.js';
 import { isViewMounted } from '../utils/view.js';
+import { buildWaMeUrl } from '../utils/whatsapp.js';
 
 let cumpleaneros = [];
 let selectedFecha = '';
@@ -32,16 +33,6 @@ function formatFechaDisplay(fecha) {
   return `${d}/${m}/${y}`;
 }
 
-function normalizarTelefonoWhatsApp(telefonos) {
-  if (!telefonos) return null;
-
-  const digits = String(telefonos).replace(/\D/g, '');
-  if (!digits) return null;
-
-  if (digits.length === 8) return `502${digits}`;
-  return digits;
-}
-
 function aplicarNombrePaciente(template, nombre) {
   const nombrePaciente = nombre?.trim() || 'estimado paciente';
   return template.replace(/\bpaciente\b/gi, nombrePaciente);
@@ -58,11 +49,7 @@ function buildMensajeCumpleanos(nombre) {
 }
 
 function buildWhatsAppUrl(telefonos, nombre) {
-  const phone = normalizarTelefonoWhatsApp(telefonos);
-  if (!phone) return null;
-
-  const text = encodeURIComponent(buildMensajeCumpleanos(nombre));
-  return `https://wa.me/${phone}?text=${text}`;
+  return buildWaMeUrl(telefonos, buildMensajeCumpleanos(nombre));
 }
 
 function renderTable() {

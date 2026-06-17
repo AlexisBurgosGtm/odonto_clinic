@@ -6,6 +6,7 @@ import { sanitizeText } from '../utils/sanitize.js';
 import { isViewMounted } from '../utils/view.js';
 import { removePrintFab } from '../utils/floating-ui.js';
 import { mountNuevoFab } from '../utils/nuevo-fab.js';
+import { canAddPacienteTratamiento } from '../utils/roles.js';
 
 let codpacienteActual = null;
 let pacienteActual = null;
@@ -1219,7 +1220,7 @@ export async function bindPacienteTratamientos(params = {}) {
 
   mountPrintFab();
 
-  if (getSession()?.tipo === 'MEDICO') {
+  if (canAddPacienteTratamiento(getSession()?.tipo)) {
     mountNuevoTratamientoFab();
   }
 

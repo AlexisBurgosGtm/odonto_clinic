@@ -11,6 +11,8 @@ import {
   toApiDatetime,
 } from '../utils/datetime.js';
 import { showPacienteDetalleByCod } from './pacientes.js';
+import { showAgendaTratamientosBtn } from '../utils/roles.js';
+import { buildWaMeUrl } from '../utils/whatsapp.js';
 
 let calendar = null;
 let medicos = [];
@@ -829,40 +831,96 @@ async function handleDelete(id) {
   }
 }
 
-function isMedicoAgenda() {
-  return getSession()?.tipo === 'MEDICO';
+function buildRecordatorioMensaje(evento) {
+  const nombre = evento.PACIENTE?.trim() || 'estimado paciente';
+  const empresa = getSession()?.empresa?.trim() || 'nuestra clínica dental';
+  const horario = formatCitaHorario(evento);
+  const fecha = formatFechaDisplay(splitDatetime(evento.FECHA).date);
+
+  return `Hola ${nombre}, le recordamos su cita dental el ${fecha} a las ${horario} en ${empresa}. ¡Le esperamos!`;
+}
+
+function renderAgendaWhatsappBtn(evento) {
+  if (getSession()?.tipo !== 'SECRETARIA' || !evento.CODPACIENTE) return '';
+
+  const waUrl = buildWaMeUrl(evento.TELEFONOS, buildRecordatorioMensaje(evento));
+
+  if (waUrl) {
+    return `
+      <a
+        href="${escapeHtml(waUrl)}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="btn btn-sm btn-whatsapp btn-action btn-action-labeled"
+        data-whatsapp-recordatorio
+        title="Enviar recordatorio por WhatsApp"
+      >
+        <i class="fa-brands fa-whatsapp me-1"></i>Recordatorio
+      </a>
+    `;
+  }
+
+  return `
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary btn-action btn-action-labeled"
+      disabled
+      title="Sin teléfono registrado"
+    >
+      <i class="fa-brands fa-whatsapp me-1"></i>Sin teléfono
+    </button>
+  `;
+}
+
+function renderAgendaPacienteActionBtns(evento) {
+  if (!evento?.CODPACIENTE) return '';
+
+  const tipo = getSession()?.tipo;
+  const isMedico = tipo === 'MEDICO';
+  const showTratamientos = showAgendaTratamientosBtn(tipo);
+  const isSecretaria = tipo === 'SECRETARIA';
+
+  if (!isMedico && !showTratamientos && !isSecretaria) return '';
+
+  const perfilBtn = isMedico
+    ? `
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-primary btn-action btn-action-labeled"
+        data-paciente-perfil="${evento.CODPACIENTE}"
+        title="Ver perfil del paciente"
+      >
+        <i class="fa-solid fa-user me-1"></i>Perfil
+      </button>
+    `
+    : '';
+
+  const tratamientosBtn = showTratamientos
+    ? `
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-info btn-action btn-action-labeled"
+        data-tratamientos="${evento.CODPACIENTE}"
+        title="Tratamientos del paciente"
+      >
+        <i class="fa-solid fa-tooth me-1"></i>Tratamientos
+      </button>
+    `
+    : '';
+
+  const whatsappBtn = renderAgendaWhatsappBtn(evento);
+
+  return `${perfilBtn}${tratamientosBtn}${whatsappBtn}`;
 }
 
 function renderAgendaMobileCards(eventos) {
-  const isMedico = isMedicoAgenda();
-
   if (eventos.length === 0) {
     return '<p class="text-center text-muted py-4 mb-0">No hay citas para esta fecha</p>';
   }
 
   return sortEventosPorHora(eventos).map((evento) => {
     const color = evento.COLOR || '#0ea5e9';
-    const codpaciente = evento.CODPACIENTE;
-    const pacienteBtns = isMedico && codpaciente
-      ? `
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-primary btn-action btn-action-labeled"
-          data-paciente-perfil="${codpaciente}"
-          title="Ver perfil del paciente"
-        >
-          <i class="fa-solid fa-user me-1"></i>Perfil
-        </button>
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-info btn-action btn-action-labeled"
-          data-tratamientos="${codpaciente}"
-          title="Tratamientos del paciente"
-        >
-          <i class="fa-solid fa-tooth me-1"></i>Tratamientos
-        </button>
-      `
-      : '';
+    const pacienteBtns = renderAgendaPacienteActionBtns(evento);
 
     return `
       <article
@@ -962,6 +1020,11 @@ function bindAgendaMobileList() {
     if (tratamientosBtn) {
       e.stopPropagation();
       window.location.hash = `#/pacientes/${tratamientosBtn.dataset.tratamientos}/tratamientos`;
+      return;
+    }
+
+    if (e.target.closest('[data-whatsapp-recordatorio]')) {
+      e.stopPropagation();
       return;
     }
 
@@ -1127,16 +1190,19 @@ export async function bindAgenda(params = {}) {
 
     const filtroContainer = document.querySelector('.agenda-filtros');
 
+    const agendaMobile = document.getElementById('agendaMobile');
+    const showPacienteActions = roleConfig.lockMedico || getSession()?.tipo === 'SECRETARIA';
+
     if (roleConfig.lockMedico) {
       filtroMedico = String(roleConfig.codemp || '');
       filtroContainer?.classList.add('d-none');
-      document.getElementById('agendaMobile')?.classList.add('agenda-mobile-medico');
     } else {
       filtroMedico = '';
       filtroContainer?.classList.remove('d-none');
-      document.getElementById('agendaMobile')?.classList.remove('agenda-mobile-medico');
       renderFiltroMedico();
     }
+
+    agendaMobile?.classList.toggle('agenda-mobile-paciente-actions', showPacienteActions);
 
     bindAgendaMobileList();
     setupAgendaLayout(roleConfig.initialView);

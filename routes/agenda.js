@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
     let sql = `
       SELECT a.ID, a.EMPNIT, a.CODPACIENTE, a.CODEMP, a.MOTIVO, a.OBS, a.FECHA, a.FECHA_FIN,
              e.EMPLEADO AS MEDICO, e.COLOR,
-             p.NOMBRE AS PACIENTE, p.NACIMIENTO
+             p.NOMBRE AS PACIENTE, p.NACIMIENTO, p.TELEFONOS
       FROM agenda a
       LEFT JOIN empleados e ON e.CODEMP = a.CODEMP AND e.EMPNIT = a.EMPNIT
       LEFT JOIN pacientes p ON p.CODPACIENTE = a.CODPACIENTE AND p.EMPNIT = a.EMPNIT
@@ -77,7 +77,7 @@ router.get('/:id', async (req, res) => {
     const [rows] = await pool.query(
       `SELECT a.ID, a.EMPNIT, a.CODPACIENTE, a.CODEMP, a.MOTIVO, a.OBS, a.FECHA, a.FECHA_FIN,
               e.EMPLEADO AS MEDICO, e.COLOR,
-              p.NOMBRE AS PACIENTE, p.NACIMIENTO
+              p.NOMBRE AS PACIENTE, p.NACIMIENTO, p.TELEFONOS
        FROM agenda a
        LEFT JOIN empleados e ON e.CODEMP = a.CODEMP AND e.EMPNIT = a.EMPNIT
        LEFT JOIN pacientes p ON p.CODPACIENTE = a.CODPACIENTE AND p.EMPNIT = a.EMPNIT

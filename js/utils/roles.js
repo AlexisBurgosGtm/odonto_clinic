@@ -80,6 +80,14 @@ export function canManagePacientes(tipo) {
   return tipo === 'GERENTE' || tipo === 'SECRETARIA';
 }
 
+export function canAddPacienteTratamiento(tipo) {
+  return tipo === 'MEDICO' || tipo === 'SECRETARIA';
+}
+
+export function showAgendaTratamientosBtn(tipo) {
+  return canAddPacienteTratamiento(tipo);
+}
+
 export function isRouteAllowed(tipo, path) {
 
   const role = tipo || 'GERENTE';

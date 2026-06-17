@@ -1622,7 +1622,7 @@ body:has(.btn-nuevo-fab):has(.btn-print-fab) .btn-nuevo-fab {
   border-top: 1px solid var(--color-border);
 }
 
-.agenda-mobile-medico .agenda-mobile-card-actions .btn-action-labeled {
+.agenda-mobile-paciente-actions .agenda-mobile-card-actions .btn-action-labeled {
   flex: 1;
   min-width: calc(50% - 0.2rem);
   justify-content: center;
