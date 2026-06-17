@@ -27,6 +27,60 @@ function formatFechaLabel(fecha) {
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+const GASTOS_CHART_COLORS = [
+  '#ea580c',
+  '#f97316',
+  '#fb923c',
+  '#fdba74',
+  '#c2410c',
+  '#9a3412',
+  '#7c2d12',
+  '#f59e0b',
+];
+
+function renderGastosPorTipoChart(items = []) {
+  const container = document.getElementById('gastosPorTipoChart');
+  if (!container) return;
+
+  if (!items.length) {
+    container.innerHTML = `
+      <p class="text-center text-muted py-4 mb-0">No hay gastos registrados en el periodo</p>
+    `;
+    return;
+  }
+
+  const maxTotal = Math.max(...items.map((item) => Number(item.total) || 0), 1);
+
+  container.innerHTML = items.map((item, index) => {
+    const total = Number(item.total) || 0;
+    const pct = Math.max((total / maxTotal) * 100, total > 0 ? 4 : 0);
+    const color = GASTOS_CHART_COLORS[index % GASTOS_CHART_COLORS.length];
+
+    return `
+      <div class="dashboard-gastos-bar-row">
+        <div class="dashboard-gastos-bar-label" title="${escapeHtml(item.TIPO)}">
+          ${escapeHtml(item.TIPO || 'Sin tipo')}
+        </div>
+        <div class="dashboard-gastos-bar-track" aria-hidden="true">
+          <div
+            class="dashboard-gastos-bar-fill"
+            style="width:${pct}%;background:${color}"
+          ></div>
+        </div>
+        <div class="dashboard-gastos-bar-value">${formatPrecio(total)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
 function renderStats(stats) {
   const statIngresos = document.getElementById('statIngresos');
   const statCitas = document.getElementById('statCitas');
@@ -41,6 +95,8 @@ function renderStats(stats) {
   if (periodoLabel) {
     periodoLabel.textContent = `${formatFechaLabel(stats.fechaInicio)} – ${formatFechaLabel(stats.fechaFin)}`;
   }
+
+  renderGastosPorTipoChart(stats.gastos_por_tipo || []);
 
   const citasBody = document.getElementById('citasDiaBody');
   if (citasBody) {
@@ -166,6 +222,19 @@ export function renderDashboard() {
           </div>
           <div class="stat-card-value text-pago" id="statGastos">$0</div>
           <div class="stat-card-label">Gastos del periodo</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-12">
+        <div class="content-card">
+          <div class="content-card-header">
+            <h5><i class="fa-solid fa-chart-bar me-2 text-pago"></i>Gastos por tipo</h5>
+          </div>
+          <div id="gastosPorTipoChart" class="dashboard-gastos-chart">
+            <p class="text-center text-muted py-4 mb-0">Cargando…</p>
+          </div>
         </div>
       </div>
     </div>

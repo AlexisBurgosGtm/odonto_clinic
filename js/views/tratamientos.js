@@ -5,6 +5,7 @@ import { sanitizeText } from '../utils/sanitize.js';
 import { mountNuevoFab } from '../utils/nuevo-fab.js';
 
 let tratamientos = [];
+let filtroBusqueda = '';
 
 function formatPrecio(valor) {
   const num = Number(valor);
@@ -23,6 +24,19 @@ export function renderTratamientos() {
     <div class="content-card">
       <div class="content-card-header">
         <h5><i class="fa-solid fa-tooth me-2 text-primary"></i>Tratamientos disponibles</h5>
+      </div>
+
+      <div class="table-toolbar">
+        <div class="table-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input
+            type="search"
+            id="tratamientosSearch"
+            class="form-control"
+            placeholder="Buscar por código o nombre..."
+            autocomplete="off"
+          >
+        </div>
       </div>
 
       <div class="table-responsive">
@@ -67,9 +81,30 @@ function tratamientoFormHtml(isEdit) {
   `;
 }
 
+function getTratamientosFiltrados() {
+  const query = filtroBusqueda.trim().toLowerCase();
+  if (!query) return tratamientos;
+
+  return tratamientos.filter((t) => {
+    const texto = [
+      t.CODPROD,
+      t.DESPROD,
+      formatPrecio(t.PRECIO),
+      t.PRECIO,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    return texto.includes(query);
+  });
+}
+
 function renderTable() {
   const tbody = document.getElementById('tratamientosTableBody');
   if (!tbody) return;
+
+  const filtrados = getTratamientosFiltrados();
 
   if (tratamientos.length === 0) {
     tbody.innerHTML = `
@@ -80,7 +115,16 @@ function renderTable() {
     return;
   }
 
-  tbody.innerHTML = tratamientos.map((t) => `
+  if (filtrados.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="4" class="text-center text-muted py-4">No se encontraron tratamientos con ese criterio</td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = filtrados.map((t) => `
     <tr>
       <td><span class="badge-empnit">${t.CODPROD || '—'}</span></td>
       <td>${t.DESPROD || '—'}</td>
@@ -192,6 +236,11 @@ export function bindTratamientos() {
     icon: 'fa-solid fa-plus',
     title: 'Nuevo tratamiento',
     onClick: () => openTratamientoForm('create'),
+  });
+
+  document.getElementById('tratamientosSearch')?.addEventListener('input', (e) => {
+    filtroBusqueda = e.target.value;
+    renderTable();
   });
 
   document.getElementById('tratamientosTableBody')?.addEventListener('click', (e) => {

@@ -77,6 +77,18 @@ router.get('/stats', async (req, res) => {
       [empnit, fechaInicio, fechaFin]
     );
 
+    const [gastosPorTipo] = await pool.query(
+      `SELECT g.CODTIPO,
+              COALESCE(gt.TIPO, 'Sin tipo') AS TIPO,
+              COALESCE(SUM(g.IMPORTE), 0) AS total
+       FROM gastos g
+       LEFT JOIN gastos_tipos gt ON gt.CODTIPO = g.CODTIPO
+       WHERE g.EMPNIT = ? AND DATE(g.FECHA) >= ? AND DATE(g.FECHA) <= ?
+       GROUP BY g.CODTIPO, gt.TIPO
+       ORDER BY total DESC`,
+      [empnit, fechaInicio, fechaFin]
+    );
+
     res.json({
       fechaInicio,
       fechaFin,
@@ -86,6 +98,11 @@ router.get('/stats', async (req, res) => {
       gastos_periodo: Number(gastos.total) || 0,
       citas: citasPeriodo,
       ingresos: ingresosDetalle,
+      gastos_por_tipo: gastosPorTipo.map((row) => ({
+        CODTIPO: row.CODTIPO,
+        TIPO: row.TIPO,
+        total: Number(row.total) || 0,
+      })),
     });
   } catch (error) {
     console.error('Error al obtener estadísticas:', error.message);

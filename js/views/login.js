@@ -16,7 +16,7 @@ export function renderLogin() {
           <div class="login-glass-glow"></div>
 
           <header class="login-header">
-            <img src="logonuevo.jpeg" alt="DENTAL STATE" class="login-logo-img">
+            <img src="./icons/login.png" alt="DENTAL STATE" class="login-logo-img">
           </header>
 
           <div id="loginAlert"></div>

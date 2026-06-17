@@ -94,8 +94,14 @@ function renderThemeMenuItems() {
   `).join('');
 }
 
-export function mountThemeSelector() {
-  if (document.getElementById('themeSelector')) return;
+export function unmountThemeSelector() {
+  document.getElementById('themeSelector')?.remove();
+}
+
+export function mountThemeSelector(container = document.getElementById('themeSelectorMount')) {
+  if (!container) return;
+
+  unmountThemeSelector();
 
   const root = document.createElement('div');
   root.id = 'themeSelector';
@@ -110,7 +116,7 @@ export function mountThemeSelector() {
     </div>
   `;
 
-  document.body.appendChild(root);
+  container.appendChild(root);
 
   document.getElementById('btnThemeToggle')?.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -129,5 +135,4 @@ export function mountThemeSelector() {
 
 export function initThemeSystem() {
   applyTheme(getStoredTheme());
-  mountThemeSelector();
 }

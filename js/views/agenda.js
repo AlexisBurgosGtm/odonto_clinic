@@ -22,6 +22,7 @@ let bindAbort = null;
 let selectedDate = localDateString();
 let agendaEventosPorId = new Map();
 let agendaMobileResizeHandler = null;
+let agendaDesktopMode = 'calendar';
 
 const HORAS_INICIO = 7 * 60;
 const HORAS_FIN = 18 * 60;
@@ -33,7 +34,15 @@ function isAgendaMobileLayout() {
 }
 
 function isAgendaMounted() {
-  return Boolean(document.getElementById('calendar') || document.getElementById('agendaMobileList'));
+  return Boolean(
+    document.getElementById('calendar')
+    || document.getElementById('agendaMobileList')
+    || document.getElementById('agendaDesktopTableBody')
+  );
+}
+
+function getAgendaDesktopFecha() {
+  return document.getElementById('agendaDesktopFecha')?.value || localDateString();
 }
 
 function getAgendaMobileFecha() {
@@ -55,8 +64,239 @@ function sortEventosPorHora(eventos) {
   });
 }
 
+function filtrarEventosPorMedico(eventos) {
+  return filtroMedico
+    ? eventos.filter((e) => e.CODEMP == filtroMedico)
+    : eventos;
+}
+
+function updateAgendaCitasCount(count) {
+  const el = document.getElementById('agendaCitasCount');
+  if (!el) return;
+
+  const total = Number(count) || 0;
+  el.textContent = total === 1 ? '1 cita' : `${total} citas`;
+}
+
+async function fetchAgendaDelDia(fecha) {
+  const eventos = await api.agenda.list(`${fecha} 00:00:00`, `${fecha} 23:59:59`);
+  indexAgendaEventos(eventos);
+  return filtrarEventosPorMedico(eventos);
+}
+
+function handleAgendaListClick(e) {
+  const perfilBtn = e.target.closest('[data-paciente-perfil]');
+  if (perfilBtn) {
+    e.stopPropagation();
+    showPacienteDetalleByCod(perfilBtn.dataset.pacientePerfil);
+    return;
+  }
+
+  const tratamientosBtn = e.target.closest('[data-tratamientos]');
+  if (tratamientosBtn) {
+    e.stopPropagation();
+    window.location.hash = `#/pacientes/${tratamientosBtn.dataset.tratamientos}/tratamientos`;
+    return;
+  }
+
+  if (e.target.closest('[data-whatsapp-recordatorio]')) {
+    e.stopPropagation();
+    return;
+  }
+
+  const detalleBtn = e.target.closest('[data-cita-detalle]');
+  if (detalleBtn) {
+    openCitaDetalleModal(detalleBtn.dataset.citaDetalle);
+    return;
+  }
+
+  const row = e.target.closest('[data-event-id]');
+  if (!row || e.target.closest('.agenda-table-actions, .agenda-mobile-card-actions')) return;
+  openCitaDetalleModal(row.dataset.eventId);
+}
+
 function indexAgendaEventos(eventos) {
   agendaEventosPorId = new Map(eventos.map((evento) => [String(evento.ID), evento]));
+}
+
+function renderAgendaTableActionCell(evento) {
+  const pacienteBtns = renderAgendaPacienteActionBtns(evento);
+
+  return `
+    <div class="agenda-table-actions">
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-secondary btn-action"
+        data-cita-detalle="${evento.ID}"
+        title="Ver detalle de la cita"
+      >
+        <i class="fa-solid fa-eye"></i>
+      </button>
+      ${pacienteBtns}
+    </div>
+  `;
+}
+
+function renderAgendaDesktopTable(eventos, { showMedico } = {}) {
+  const colspan = showMedico ? 6 : 5;
+
+  if (eventos.length === 0) {
+    return `
+      <tr>
+        <td colspan="${colspan}" class="text-center text-muted py-4">No hay citas para esta fecha</td>
+      </tr>
+    `;
+  }
+
+  return sortEventosPorHora(eventos).map((evento) => {
+    const color = evento.COLOR || '#0ea5e9';
+    const medicoCell = showMedico
+      ? `
+        <td>
+          <span class="agenda-table-medico">
+            <span class="agenda-table-medico-color" style="background:${color}"></span>
+            ${escapeHtml(evento.MEDICO || '—')}
+          </span>
+        </td>
+      `
+      : '';
+
+    return `
+      <tr class="agenda-table-row" data-event-id="${evento.ID}">
+        <td class="nowrap fw-semibold">${escapeHtml(formatCitaHorario(evento))}</td>
+        ${medicoCell}
+        <td>${escapeHtml(evento.PACIENTE || 'Sin paciente')}</td>
+        <td>${escapeHtml(evento.MOTIVO || '—')}</td>
+        <td class="agenda-table-obs">${escapeHtml(evento.OBS || '—')}</td>
+        <td class="text-end">${renderAgendaTableActionCell(evento)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function loadAgendaDesktopList(fecha = getAgendaDesktopFecha()) {
+  const tbody = document.getElementById('agendaDesktopTableBody');
+  const thead = document.getElementById('agendaDesktopTableHead');
+  if (!tbody) return;
+
+  selectedDate = fecha;
+  const fechaInput = document.getElementById('agendaDesktopFecha');
+  if (fechaInput && fechaInput.value !== fecha) {
+    fechaInput.value = fecha;
+  }
+
+  const label = document.getElementById('agendaDesktopFechaLabel');
+  if (label) label.textContent = formatFechaDisplay(fecha);
+
+  const showMedico = !getAgendaRoleConfig().lockMedico;
+  if (thead) {
+    thead.innerHTML = showMedico
+      ? `
+        <tr>
+          <th>Horario</th>
+          <th>Médico</th>
+          <th>Paciente</th>
+          <th>Motivo</th>
+          <th>Observaciones</th>
+          <th class="text-end" style="width: 1%;">Acciones</th>
+        </tr>
+      `
+      : `
+        <tr>
+          <th>Horario</th>
+          <th>Paciente</th>
+          <th>Motivo</th>
+          <th>Observaciones</th>
+          <th class="text-end" style="width: 1%;">Acciones</th>
+        </tr>
+      `;
+  }
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="${showMedico ? 6 : 5}" class="text-center text-muted py-4">Cargando...</td>
+    </tr>
+  `;
+
+  try {
+    const filtrados = await fetchAgendaDelDia(fecha);
+    if (!document.getElementById('agendaDesktopTableBody')) return;
+    updateAgendaCitasCount(filtrados.length);
+    tbody.innerHTML = renderAgendaDesktopTable(filtrados, { showMedico });
+  } catch (error) {
+    if (document.getElementById('agendaDesktopTableBody')) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="${showMedico ? 6 : 5}" class="text-center text-danger py-4">${escapeHtml(error.message)}</td>
+        </tr>
+      `;
+    }
+  }
+}
+
+function setAgendaDesktopMode(mode) {
+  if (isAgendaMobileLayout()) return;
+
+  agendaDesktopMode = mode;
+
+  const calendarPanel = document.getElementById('agendaDesktopCalendar');
+  const listPanel = document.getElementById('agendaDesktopList');
+
+  document.querySelectorAll('[data-agenda-mode]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.agendaMode === mode);
+  });
+
+  if (mode === 'list') {
+    calendarPanel?.classList.add('d-none');
+    listPanel?.classList.remove('d-none');
+
+    const fechaInput = document.getElementById('agendaDesktopFecha');
+    const hoy = localDateString();
+    if (fechaInput && !fechaInput.value) {
+      fechaInput.value = hoy;
+    }
+
+    loadAgendaDesktopList(getAgendaDesktopFecha());
+    return;
+  }
+
+  calendarPanel?.classList.remove('d-none');
+  listPanel?.classList.add('d-none');
+
+  if (!calendar) {
+    initCalendar(getAgendaRoleConfig().initialView);
+  } else {
+    calendar.refetchEvents();
+  }
+}
+
+function bindAgendaDesktopList() {
+  const tbody = document.getElementById('agendaDesktopTableBody');
+  const fechaInput = document.getElementById('agendaDesktopFecha');
+  if (!tbody || tbody.dataset.desktopBound === '1') return;
+
+  tbody.dataset.desktopBound = '1';
+
+  if (fechaInput && !fechaInput.value) {
+    fechaInput.value = localDateString();
+  }
+
+  fechaInput?.addEventListener('change', () => {
+    if (fechaInput.value) {
+      selectedDate = fechaInput.value;
+      loadAgendaDesktopList(fechaInput.value);
+    }
+  });
+
+  tbody.addEventListener('click', handleAgendaListClick);
+}
+
+function bindAgendaDesktopModeToggle(signal) {
+  document.querySelectorAll('[data-agenda-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setAgendaDesktopMode(btn.dataset.agendaMode);
+    }, { signal });
+  });
 }
 
 export function cleanupAgenda() {
@@ -250,6 +490,7 @@ function buildCitaDetalleHtml(evento) {
   const { time: horaInicio } = splitDatetime(evento.FECHA);
   const { time: horaFin } = splitDatetime(evento.FECHA_FIN);
   const horario = horaFin ? `${horaInicio} – ${horaFin}` : horaInicio || '—';
+  const acciones = renderAgendaPacienteActionBtns(evento);
 
   return `
     <div class="swal-form text-start cita-detalle-modal">
@@ -269,8 +510,24 @@ function buildCitaDetalleHtml(evento) {
         <label class="form-label text-muted small mb-1">Observaciones</label>
         <p class="mb-0 cita-detalle-obs">${escapeHtml(evento.OBS || '—')}</p>
       </div>
+      ${acciones ? `<div class="cita-detalle-actions">${acciones}</div>` : ''}
     </div>
   `;
+}
+
+function bindCitaDetalleActions(evento) {
+  const popup = Swal.getPopup();
+  if (!popup) return;
+
+  popup.querySelector('[data-paciente-perfil]')?.addEventListener('click', () => {
+    Swal.close();
+    showPacienteDetalleByCod(evento.CODPACIENTE);
+  });
+
+  popup.querySelector('[data-tratamientos]')?.addEventListener('click', () => {
+    Swal.close();
+    window.location.hash = `#/pacientes/${evento.CODPACIENTE}/tratamientos`;
+  });
 }
 
 async function openCitaDetalleModal(eventIdOrEvento) {
@@ -282,13 +539,24 @@ async function openCitaDetalleModal(eventIdOrEvento) {
     return;
   }
 
-  await SwalTheme.fire({
+  agendaEventosPorId.set(String(evento.ID), evento);
+
+  const result = await SwalTheme.fire({
     title: 'Detalle de la cita',
     html: buildCitaDetalleHtml(evento),
-    width: 'min(420px, 92vw)',
+    width: 'min(460px, 92vw)',
     confirmButtonText: 'Cerrar',
+    showDenyButton: true,
+    denyButtonText: '<i class="fa-solid fa-pen me-1"></i>Editar cita',
     showCancelButton: false,
+    didOpen: () => {
+      bindCitaDetalleActions(evento);
+    },
   });
+
+  if (result.isDenied) {
+    openEventoForm('edit', evento);
+  }
 }
 
 function handleHorasSlotClick(e) {
@@ -659,9 +927,12 @@ async function fetchEventos(info) {
   const eventos = await api.agenda.list(start, end);
 
   if (!isAgendaMounted()) return [];
-  const filtrados = filtroMedico
-    ? eventos.filter((e) => e.CODEMP == filtroMedico)
-    : eventos;
+  const filtrados = filtrarEventosPorMedico(eventos);
+
+  if (!isAgendaMobileLayout() && agendaDesktopMode === 'calendar') {
+    updateAgendaCitasCount(filtrados.length);
+  }
+
   return filtrados.map(mapEventoToCalendar);
 }
 
@@ -966,14 +1237,9 @@ async function loadAgendaMobileList(fecha = getAgendaMobileFecha()) {
   list.innerHTML = '<p class="text-center text-muted py-4 mb-0">Cargando...</p>';
 
   try {
-    const eventos = await api.agenda.list(`${fecha} 00:00:00`, `${fecha} 23:59:59`);
+    const filtrados = await fetchAgendaDelDia(fecha);
     if (!document.getElementById('agendaMobileList')) return;
-
-    const filtrados = filtroMedico
-      ? eventos.filter((e) => e.CODEMP == filtroMedico)
-      : eventos;
-
-    indexAgendaEventos(eventos);
+    updateAgendaCitasCount(filtrados.length);
     list.innerHTML = renderAgendaMobileCards(filtrados);
   } catch (error) {
     if (document.getElementById('agendaMobileList')) {
@@ -987,6 +1253,12 @@ function refreshAgendaViews() {
     loadAgendaMobileList(getAgendaMobileFecha());
     return;
   }
+
+  if (agendaDesktopMode === 'list') {
+    loadAgendaDesktopList(getAgendaDesktopFecha());
+    return;
+  }
+
   calendar?.refetchEvents();
 }
 
@@ -1008,36 +1280,7 @@ function bindAgendaMobileList() {
     }
   });
 
-  list.addEventListener('click', (e) => {
-    const perfilBtn = e.target.closest('[data-paciente-perfil]');
-    if (perfilBtn) {
-      e.stopPropagation();
-      showPacienteDetalleByCod(perfilBtn.dataset.pacientePerfil);
-      return;
-    }
-
-    const tratamientosBtn = e.target.closest('[data-tratamientos]');
-    if (tratamientosBtn) {
-      e.stopPropagation();
-      window.location.hash = `#/pacientes/${tratamientosBtn.dataset.tratamientos}/tratamientos`;
-      return;
-    }
-
-    if (e.target.closest('[data-whatsapp-recordatorio]')) {
-      e.stopPropagation();
-      return;
-    }
-
-    const detalleBtn = e.target.closest('[data-cita-detalle]');
-    if (detalleBtn) {
-      openCitaDetalleModal(detalleBtn.dataset.citaDetalle);
-      return;
-    }
-
-    const card = e.target.closest('.agenda-mobile-card[data-event-id]');
-    if (!card) return;
-    openCitaDetalleModal(card.dataset.eventId);
-  });
+  list.addEventListener('click', handleAgendaListClick);
 }
 
 function setupAgendaLayout(initialView = 'dayGridMonth') {
@@ -1056,10 +1299,16 @@ function setupAgendaLayout(initialView = 'dayGridMonth') {
     return;
   }
 
-  initCalendar(initialView);
+  bindAgendaDesktopList();
+  setAgendaDesktopMode(agendaDesktopMode || 'calendar');
+  if (agendaDesktopMode !== 'list' && !calendar) {
+    initCalendar(initialView);
+  }
 }
 
 export function renderAgenda() {
+  const hoy = localDateString();
+
   return `
     <div class="content-card view-agenda">
       <div class="content-card-header">
@@ -1080,10 +1329,46 @@ export function renderAgenda() {
         <select id="filtroMedico" class="form-select agenda-filtro-select">
           <option value="">Todos los médicos</option>
         </select>
+        <span id="agendaCitasCount" class="agenda-citas-count">—</span>
+      </div>
+
+      <div class="agenda-desktop-toolbar" id="agendaDesktopToolbar">
+        <div class="agenda-view-toggle btn-group" role="group" aria-label="Vista de agenda">
+          <button type="button" class="btn btn-sm btn-outline-primary active" data-agenda-mode="calendar">
+            <i class="fa-solid fa-calendar me-1"></i>Calendario
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-primary" data-agenda-mode="list">
+            <i class="fa-solid fa-list me-1"></i>Listado del día
+          </button>
+        </div>
       </div>
 
       <div class="agenda-desktop" id="agendaDesktop">
-        <div id="calendar"></div>
+        <div class="agenda-desktop-calendar" id="agendaDesktopCalendar">
+          <div id="calendar"></div>
+        </div>
+
+        <div class="agenda-desktop-list d-none" id="agendaDesktopList">
+          <div class="agenda-desktop-list-toolbar">
+            <div class="agenda-desktop-list-fecha">
+              <label for="agendaDesktopFecha" class="form-label">Fecha</label>
+              <input type="date" id="agendaDesktopFecha" class="form-control" value="${hoy}">
+            </div>
+            <p class="agenda-desktop-list-meta mb-0">
+              Citas del <strong id="agendaDesktopFechaLabel"></strong>
+            </p>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover crud-table agenda-desktop-table mb-0">
+              <thead id="agendaDesktopTableHead"></thead>
+              <tbody id="agendaDesktopTableBody">
+                <tr>
+                  <td class="text-center text-muted py-4">Cargando...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <div class="agenda-mobile" id="agendaMobile">
@@ -1137,8 +1422,13 @@ function initCalendar(initialView = 'dayGridMonth') {
     slotMaxTime: '20:00:00',
     events: fetchEventos,
     datesSet(info) {
-      if (info.view.type === 'timeGridDay') {
-        selectedDate = info.startStr.slice(0, 10);
+      const fecha = info.startStr.slice(0, 10);
+      selectedDate = fecha;
+
+      if (agendaDesktopMode === 'list') {
+        const desktopFecha = document.getElementById('agendaDesktopFecha');
+        if (desktopFecha) desktopFecha.value = fecha;
+        loadAgendaDesktopList(fecha);
       }
     },
     eventDidMount(info) {
@@ -1156,7 +1446,7 @@ function initCalendar(initialView = 'dayGridMonth') {
       openEventoForm('create', null, fecha);
     },
     eventClick(info) {
-      const props = { ...info.event.extendedProps };
+      const props = { ...info.event.extendedProps, ID: info.event.id };
       if (info.event.start) {
         const inicio = splitDatetime(info.event.start);
         if (inicio.date) selectedDate = inicio.date;
@@ -1166,7 +1456,7 @@ function initCalendar(initialView = 'dayGridMonth') {
         const fin = splitDatetime(info.event.end);
         props.FECHA_FIN = combineDatetime(fin.date, fin.time);
       }
-      openEventoForm('edit', props);
+      openCitaDetalleModal(props);
     },
   });
 
@@ -1195,16 +1485,22 @@ export async function bindAgenda(params = {}) {
 
     if (roleConfig.lockMedico) {
       filtroMedico = String(roleConfig.codemp || '');
-      filtroContainer?.classList.add('d-none');
+      filtroContainer?.classList.remove('d-none');
+      filtroContainer?.classList.add('agenda-filtros-solo-conteo');
     } else {
       filtroMedico = '';
-      filtroContainer?.classList.remove('d-none');
+      filtroContainer?.classList.remove('d-none', 'agenda-filtros-solo-conteo');
       renderFiltroMedico();
     }
 
     agendaMobile?.classList.toggle('agenda-mobile-paciente-actions', showPacienteActions);
 
+    const agendaDesktop = document.getElementById('agendaDesktop');
+    agendaDesktop?.classList.toggle('agenda-desktop-paciente-actions', showPacienteActions);
+
     bindAgendaMobileList();
+    bindAgendaDesktopList();
+    bindAgendaDesktopModeToggle(signal);
     setupAgendaLayout(roleConfig.initialView);
 
     if (signal.aborted || !isAgendaMounted()) return;

@@ -24,7 +24,7 @@ import { renderGastos, bindGastos } from './views/gastos.js';
 import { renderReportes, bindReportes } from './views/reportes.js';
 import { alertError, confirmAction } from './utils/swal.js';
 import { cleanupFloatingUi } from './utils/floating-ui.js';
-import { initThemeSystem } from './utils/themes.js';
+import { initThemeSystem, mountThemeSelector, unmountThemeSelector } from './utils/themes.js';
 
 /* ─── Mapa de rutas → renderers ────────────── */
 const routes = {
@@ -102,6 +102,7 @@ function renderLayout() {
         </button>
         <span class="topbar-title" id="topbarTitle">${defaultTitle}</span>
         <div class="topbar-user">
+          <div id="themeSelectorMount" class="topbar-theme-mount"></div>
           <div class="topbar-user-avatar">
             <i class="fa-solid fa-user"></i>
           </div>
@@ -123,6 +124,7 @@ function renderLayout() {
   `;
 
   bindLayoutEvents();
+  mountThemeSelector();
   initRouter();
 }
 
@@ -247,6 +249,7 @@ function updateActiveNav(path) {
 function showLogin() {
   cleanupAgenda();
   cleanupFloatingUi();
+  unmountThemeSelector();
   clearSessionLogo();
   app.innerHTML = renderLogin();
   bindLoginEvents(handleLogin);
