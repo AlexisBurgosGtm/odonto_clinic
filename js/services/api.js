@@ -105,6 +105,8 @@ export const api = {
     create: (body) => request('/api/agenda', { method: 'POST', body: JSON.stringify(body) }),
     update: (id, body) =>
       request(`/api/agenda/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    finalizar: (id) =>
+      request(`/api/agenda/${id}/finalizar`, { method: 'PUT', body: JSON.stringify({}) }),
     delete: (id) => request(`/api/agenda/${id}`, { method: 'DELETE' }),
   },
 

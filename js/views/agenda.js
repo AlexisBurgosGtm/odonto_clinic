@@ -486,14 +486,29 @@ function buildHorasDisponiblesShell(fecha, medicosLista) {
   `;
 }
 
+function formatCitaStatus(status) {
+  const value = String(status || 'PENDIENTE').toUpperCase();
+  return value === 'FINALIZADO' ? 'Finalizado' : 'Pendiente';
+}
+
+function isCitaPendiente(evento) {
+  return String(evento?.STATUS || 'PENDIENTE').toUpperCase() !== 'FINALIZADO';
+}
+
 function buildCitaDetalleHtml(evento) {
   const { time: horaInicio } = splitDatetime(evento.FECHA);
   const { time: horaFin } = splitDatetime(evento.FECHA_FIN);
   const horario = horaFin ? `${horaInicio} – ${horaFin}` : horaInicio || '—';
   const acciones = renderAgendaPacienteActionBtns(evento);
+  const status = formatCitaStatus(evento.STATUS);
+  const statusClass = isCitaPendiente(evento) ? 'cita-status-pendiente' : 'cita-status-finalizado';
 
   return `
     <div class="swal-form text-start cita-detalle-modal">
+      <div class="mb-3">
+        <label class="form-label text-muted small mb-1">Estado</label>
+        <p class="mb-0"><span class="cita-status-badge ${statusClass}">${escapeHtml(status)}</span></p>
+      </div>
       <div class="mb-3">
         <label class="form-label text-muted small mb-1">Horario</label>
         <p class="mb-0 fw-semibold">${escapeHtml(horario)}</p>
@@ -530,6 +545,31 @@ function bindCitaDetalleActions(evento) {
   });
 }
 
+async function handleFinalizarCita(evento) {
+  const paciente = evento.PACIENTE || 'Sin paciente';
+  const horario = formatCitaHorario(evento);
+
+  const confirmed = await confirmAction({
+    title: '¿Finalizar cita?',
+    text: `¿Desea marcar como finalizada la cita de ${paciente} (${horario})?`,
+    icon: 'question',
+    confirmText: 'Finalizar',
+    cancelText: 'Cancelar',
+    confirmColor: 'primary',
+  });
+
+  if (!confirmed) return;
+
+  try {
+    await api.agenda.finalizar(evento.ID);
+    agendaEventosPorId.set(String(evento.ID), { ...evento, STATUS: 'FINALIZADO' });
+    refreshAgendaViews();
+    await alertSuccess('Cita finalizada');
+  } catch (error) {
+    await alertError(error.message);
+  }
+}
+
 async function openCitaDetalleModal(eventIdOrEvento) {
   const evento = eventIdOrEvento && typeof eventIdOrEvento === 'object'
     ? eventIdOrEvento
@@ -540,6 +580,7 @@ async function openCitaDetalleModal(eventIdOrEvento) {
   }
 
   agendaEventosPorId.set(String(evento.ID), evento);
+  const pendiente = isCitaPendiente(evento);
 
   const result = await SwalTheme.fire({
     title: 'Detalle de la cita',
@@ -548,7 +589,9 @@ async function openCitaDetalleModal(eventIdOrEvento) {
     confirmButtonText: 'Cerrar',
     showDenyButton: true,
     denyButtonText: '<i class="fa-solid fa-pen me-1"></i>Editar cita',
-    showCancelButton: false,
+    showCancelButton: pendiente,
+    cancelButtonText: '<i class="fa-solid fa-check me-1"></i>Finalizar cita',
+    cancelButtonColor: '#15803d',
     didOpen: () => {
       bindCitaDetalleActions(evento);
     },
@@ -556,6 +599,11 @@ async function openCitaDetalleModal(eventIdOrEvento) {
 
   if (result.isDenied) {
     openEventoForm('edit', evento);
+    return;
+  }
+
+  if (result.dismiss === Swal.DismissReason.cancel) {
+    await handleFinalizarCita(evento);
   }
 }
 

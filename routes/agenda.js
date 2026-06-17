@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
 
   try {
     let sql = `
-      SELECT a.ID, a.EMPNIT, a.CODPACIENTE, a.CODEMP, a.MOTIVO, a.OBS, a.FECHA, a.FECHA_FIN,
+      SELECT a.ID, a.EMPNIT, a.CODPACIENTE, a.CODEMP, a.MOTIVO, a.OBS, a.FECHA, a.FECHA_FIN, a.STATUS,
              e.EMPLEADO AS MEDICO, e.COLOR,
              p.NOMBRE AS PACIENTE, p.NACIMIENTO, p.TELEFONOS
       FROM agenda a
@@ -75,7 +75,7 @@ router.get('/:id', async (req, res) => {
 
   try {
     const [rows] = await pool.query(
-      `SELECT a.ID, a.EMPNIT, a.CODPACIENTE, a.CODEMP, a.MOTIVO, a.OBS, a.FECHA, a.FECHA_FIN,
+      `SELECT a.ID, a.EMPNIT, a.CODPACIENTE, a.CODEMP, a.MOTIVO, a.OBS, a.FECHA, a.FECHA_FIN, a.STATUS,
               e.EMPLEADO AS MEDICO, e.COLOR,
               p.NOMBRE AS PACIENTE, p.NACIMIENTO, p.TELEFONOS
        FROM agenda a
@@ -130,8 +130,8 @@ router.post('/', async (req, res) => {
     }
 
     const [result] = await pool.query(
-      `INSERT INTO agenda (EMPNIT, CODPACIENTE, CODEMP, MOTIVO, OBS, FECHA, FECHA_FIN)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO agenda (EMPNIT, CODPACIENTE, CODEMP, MOTIVO, OBS, FECHA, FECHA_FIN, STATUS)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDIENTE')`,
       [
         empnit,
         CODPACIENTE || null,
@@ -143,10 +143,40 @@ router.post('/', async (req, res) => {
       ]
     );
 
-    res.status(201).json({ ID: result.insertId, message: 'Evento creado' });
+    res.status(201).json({ ID: result.insertId, STATUS: 'PENDIENTE', message: 'Evento creado' });
   } catch (error) {
     console.error('Error al crear evento:', error.message);
     res.status(500).json({ error: 'Error al crear evento' });
+  }
+});
+
+router.put('/:id/finalizar', async (req, res) => {
+  const empnit = getEmpnit(req, res);
+  if (!empnit) return;
+
+  try {
+    const [existente] = await pool.query(
+      'SELECT ID, STATUS FROM agenda WHERE ID = ? AND EMPNIT = ?',
+      [req.params.id, empnit]
+    );
+
+    if (existente.length === 0) {
+      return res.status(404).json({ error: 'Evento no encontrado' });
+    }
+
+    if (existente[0].STATUS === 'FINALIZADO') {
+      return res.status(400).json({ error: 'La cita ya está finalizada' });
+    }
+
+    await pool.query(
+      `UPDATE agenda SET STATUS = 'FINALIZADO' WHERE ID = ? AND EMPNIT = ?`,
+      [req.params.id, empnit]
+    );
+
+    res.json({ message: 'Cita finalizada', STATUS: 'FINALIZADO' });
+  } catch (error) {
+    console.error('Error al finalizar cita:', error.message);
+    res.status(500).json({ error: 'Error al finalizar la cita' });
   }
 });
 
