@@ -30,7 +30,7 @@ function isAgendaMobileLayout() {
 }
 
 function isAgendaMounted() {
-  return Boolean(document.getElementById('calendar') || document.getElementById('agendaMobileListBody'));
+  return Boolean(document.getElementById('calendar') || document.getElementById('agendaMobileList'));
 }
 
 function getAgendaMobileFecha() {
@@ -828,51 +828,89 @@ async function handleDelete(id) {
   }
 }
 
-function renderAgendaMobileRows(eventos) {
+function isMedicoAgenda() {
+  return getSession()?.tipo === 'MEDICO';
+}
+
+function renderAgendaMobileCards(eventos) {
+  const isMedico = isMedicoAgenda();
+
   if (eventos.length === 0) {
-    return `
-      <tr>
-        <td colspan="3" class="text-center text-muted py-4">No hay citas para esta fecha</td>
-      </tr>
-    `;
+    return '<p class="text-center text-muted py-4 mb-0">No hay citas para esta fecha</p>';
   }
 
   return sortEventosPorHora(eventos).map((evento) => {
     const color = evento.COLOR || '#0ea5e9';
+    const codpaciente = evento.CODPACIENTE;
+    const tratamientosBtn = isMedico && codpaciente
+      ? `
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-info btn-action btn-action-labeled"
+          data-tratamientos="${codpaciente}"
+          title="Tratamientos del paciente"
+        >
+          <i class="fa-solid fa-tooth me-1"></i>Tratamientos
+        </button>
+      `
+      : '';
+
     return `
-      <tr
-        class="agenda-mobile-row"
+      <article
+        class="agenda-mobile-card"
         data-event-id="${evento.ID}"
         style="--agenda-medico-color: ${color}"
       >
-        <td class="nowrap agenda-mobile-hora">${escapeHtml(formatCitaHorario(evento))}</td>
-        <td class="agenda-mobile-paciente">${escapeHtml(evento.PACIENTE || 'Sin paciente')}</td>
-        <td class="agenda-mobile-motivo">${escapeHtml(evento.MOTIVO || '—')}</td>
-      </tr>
+        <div class="agenda-mobile-card-body">
+          <div class="agenda-mobile-card-top">
+            <span class="agenda-mobile-card-hora">
+              <i class="fa-regular fa-clock me-1"></i>${escapeHtml(formatCitaHorario(evento))}
+            </span>
+          </div>
+          <h6 class="agenda-mobile-card-paciente">${escapeHtml(evento.PACIENTE || 'Sin paciente')}</h6>
+          <p class="agenda-mobile-card-motivo">
+            <i class="fa-solid fa-notes-medical me-1"></i>${escapeHtml(evento.MOTIVO || 'Sin motivo')}
+          </p>
+          ${evento.OBS ? `
+            <p class="agenda-mobile-card-obs">${escapeHtml(evento.OBS)}</p>
+          ` : ''}
+          <div class="agenda-mobile-card-actions">
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary btn-action"
+              data-cita-detalle="${evento.ID}"
+              title="Ver detalle de la cita"
+            >
+              <i class="fa-solid fa-eye"></i>
+            </button>
+            ${tratamientosBtn}
+          </div>
+        </div>
+      </article>
     `;
   }).join('');
 }
 
 async function loadAgendaMobileList(fecha = getAgendaMobileFecha()) {
-  const tbody = document.getElementById('agendaMobileListBody');
-  if (!tbody) return;
+  const list = document.getElementById('agendaMobileList');
+  if (!list) return;
 
   selectedDate = fecha;
-  tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">Cargando...</td></tr>';
+  list.innerHTML = '<p class="text-center text-muted py-4 mb-0">Cargando...</p>';
 
   try {
     const eventos = await api.agenda.list(`${fecha} 00:00:00`, `${fecha} 23:59:59`);
-    if (!document.getElementById('agendaMobileListBody')) return;
+    if (!document.getElementById('agendaMobileList')) return;
 
     const filtrados = filtroMedico
       ? eventos.filter((e) => e.CODEMP == filtroMedico)
       : eventos;
 
     indexAgendaEventos(eventos);
-    tbody.innerHTML = renderAgendaMobileRows(filtrados);
+    list.innerHTML = renderAgendaMobileCards(filtrados);
   } catch (error) {
-    if (document.getElementById('agendaMobileListBody')) {
-      tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger py-4">${escapeHtml(error.message)}</td></tr>`;
+    if (document.getElementById('agendaMobileList')) {
+      list.innerHTML = `<p class="text-center text-danger py-4 mb-0">${escapeHtml(error.message)}</p>`;
     }
   }
 }
@@ -886,11 +924,11 @@ function refreshAgendaViews() {
 }
 
 function bindAgendaMobileList() {
-  const tbody = document.getElementById('agendaMobileListBody');
+  const list = document.getElementById('agendaMobileList');
   const fechaInput = document.getElementById('agendaMobileFecha');
-  if (!tbody || tbody.dataset.mobileBound === '1') return;
+  if (!list || list.dataset.mobileBound === '1') return;
 
-  tbody.dataset.mobileBound = '1';
+  list.dataset.mobileBound = '1';
 
   if (fechaInput && !fechaInput.value) {
     fechaInput.value = selectedDate || localDateString();
@@ -903,10 +941,23 @@ function bindAgendaMobileList() {
     }
   });
 
-  tbody.addEventListener('click', (e) => {
-    const row = e.target.closest('tr.agenda-mobile-row[data-event-id]');
-    if (!row) return;
-    openCitaDetalleModal(row.dataset.eventId);
+  list.addEventListener('click', (e) => {
+    const tratamientosBtn = e.target.closest('[data-tratamientos]');
+    if (tratamientosBtn) {
+      e.stopPropagation();
+      window.location.hash = `#/pacientes/${tratamientosBtn.dataset.tratamientos}/tratamientos`;
+      return;
+    }
+
+    const detalleBtn = e.target.closest('[data-cita-detalle]');
+    if (detalleBtn) {
+      openCitaDetalleModal(detalleBtn.dataset.citaDetalle);
+      return;
+    }
+
+    const card = e.target.closest('.agenda-mobile-card[data-event-id]');
+    if (!card) return;
+    openCitaDetalleModal(card.dataset.eventId);
   });
 }
 
@@ -961,19 +1012,8 @@ export function renderAgenda() {
           <label for="agendaMobileFecha" class="form-label">Fecha</label>
           <input type="date" id="agendaMobileFecha" class="form-control">
         </div>
-        <div class="table-responsive agenda-mobile-table-wrap">
-          <table class="table table-hover agenda-mobile-table mb-0">
-            <thead>
-              <tr>
-                <th>Hora</th>
-                <th>Paciente</th>
-                <th>Motivo</th>
-              </tr>
-            </thead>
-            <tbody id="agendaMobileListBody">
-              <tr><td colspan="3" class="text-center text-muted py-4">Cargando...</td></tr>
-            </tbody>
-          </table>
+        <div class="agenda-mobile-list" id="agendaMobileList">
+          <p class="text-center text-muted py-4 mb-0">Cargando...</p>
         </div>
       </div>
     </div>
@@ -1074,9 +1114,11 @@ export async function bindAgenda(params = {}) {
     if (roleConfig.lockMedico) {
       filtroMedico = String(roleConfig.codemp || '');
       filtroContainer?.classList.add('d-none');
+      document.getElementById('agendaMobile')?.classList.add('agenda-mobile-medico');
     } else {
       filtroMedico = '';
       filtroContainer?.classList.remove('d-none');
+      document.getElementById('agendaMobile')?.classList.remove('agenda-mobile-medico');
       renderFiltroMedico();
     }
 
