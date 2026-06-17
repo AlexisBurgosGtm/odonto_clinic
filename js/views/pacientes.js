@@ -331,13 +331,17 @@ function fillPacienteForm(paciente) {
   });
 }
 
-function renderPacienteAcciones(p, canManage) {
+function renderPacienteAcciones(p, canManage, mobile = false) {
+  const tratamientosContent = mobile && !canManage
+    ? '<i class="fa-solid fa-tooth me-1"></i>Tratamientos'
+    : '<i class="fa-solid fa-tooth"></i>';
+
   return `
     <button class="btn btn-sm btn-outline-secondary btn-action" data-view="${p.CODPACIENTE}" title="Ver datos">
       <i class="fa-solid fa-eye"></i>
     </button>
-    <button class="btn btn-sm btn-outline-info btn-action" data-tratamientos="${p.CODPACIENTE}" title="Tratamientos">
-      <i class="fa-solid fa-tooth"></i>
+    <button class="btn btn-sm btn-outline-info btn-action${mobile && !canManage ? ' btn-action-labeled' : ''}" data-tratamientos="${p.CODPACIENTE}" title="Tratamientos">
+      ${tratamientosContent}
     </button>
     <button class="btn btn-sm btn-outline-warning btn-action" data-estado-cuenta="${p.CODPACIENTE}" title="Estado de cuenta">
       <i class="fa-solid fa-file-invoice-dollar"></i>
@@ -446,7 +450,7 @@ function renderTable() {
           ${p.DIRECCION ? `<p class="paciente-mobile-direccion"><i class="fa-solid fa-location-dot me-1"></i>${p.DIRECCION}</p>` : ''}
         </div>
         <div class="paciente-mobile-actions">
-          ${renderPacienteAcciones(p, canManage)}
+          ${renderPacienteAcciones(p, canManage, true)}
         </div>
       </article>
     `).join('');

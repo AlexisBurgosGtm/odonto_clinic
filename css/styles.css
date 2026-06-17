@@ -1868,6 +1868,12 @@ body {
   border-top: 1px solid var(--color-border);
 }
 
+.view-pacientes .btn-action-labeled {
+  font-weight: 600;
+  padding-left: 0.65rem;
+  padding-right: 0.75rem;
+}
+
 .orders-mobile {
   display: none;
 }
