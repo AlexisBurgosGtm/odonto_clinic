@@ -1620,6 +1620,7 @@ body {
 
 .agenda-mobile-medico .agenda-mobile-card-actions .btn-action-labeled {
   flex: 1;
+  min-width: calc(50% - 0.2rem);
   justify-content: center;
   font-weight: 600;
   padding-left: 0.65rem;

@@ -10,6 +10,7 @@ import {
   toCalendarDatetime,
   toApiDatetime,
 } from '../utils/datetime.js';
+import { showPacienteDetalleByCod } from './pacientes.js';
 
 let calendar = null;
 let medicos = [];
@@ -842,8 +843,16 @@ function renderAgendaMobileCards(eventos) {
   return sortEventosPorHora(eventos).map((evento) => {
     const color = evento.COLOR || '#0ea5e9';
     const codpaciente = evento.CODPACIENTE;
-    const tratamientosBtn = isMedico && codpaciente
+    const pacienteBtns = isMedico && codpaciente
       ? `
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-primary btn-action btn-action-labeled"
+          data-paciente-perfil="${codpaciente}"
+          title="Ver perfil del paciente"
+        >
+          <i class="fa-solid fa-user me-1"></i>Perfil
+        </button>
         <button
           type="button"
           class="btn btn-sm btn-outline-info btn-action btn-action-labeled"
@@ -883,7 +892,7 @@ function renderAgendaMobileCards(eventos) {
             >
               <i class="fa-solid fa-eye"></i>
             </button>
-            ${tratamientosBtn}
+            ${pacienteBtns}
           </div>
         </div>
       </article>
@@ -942,6 +951,13 @@ function bindAgendaMobileList() {
   });
 
   list.addEventListener('click', (e) => {
+    const perfilBtn = e.target.closest('[data-paciente-perfil]');
+    if (perfilBtn) {
+      e.stopPropagation();
+      showPacienteDetalleByCod(perfilBtn.dataset.pacientePerfil);
+      return;
+    }
+
     const tratamientosBtn = e.target.closest('[data-tratamientos]');
     if (tratamientosBtn) {
       e.stopPropagation();

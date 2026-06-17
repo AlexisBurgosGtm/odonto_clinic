@@ -468,6 +468,10 @@ async function loadPacientes() {
 }
 
 async function openPacienteDetalle(paciente) {
+  await showPacienteDetalle(paciente);
+}
+
+export async function showPacienteDetalle(paciente) {
   let proximaCita = null;
 
   try {
@@ -486,6 +490,17 @@ async function openPacienteDetalle(paciente) {
     showCancelButton: false,
     confirmButtonText: 'Cerrar',
   });
+}
+
+export async function showPacienteDetalleByCod(codpaciente) {
+  if (!codpaciente) return;
+
+  try {
+    const paciente = await api.pacientes.get(codpaciente);
+    await showPacienteDetalle(paciente);
+  } catch (error) {
+    await alertError(error.message);
+  }
 }
 
 async function openPacienteForm(mode, paciente = null) {
