@@ -3,6 +3,15 @@ const { pool } = require('../db/mysql');
 
 const router = express.Router();
 
+const CONFIG_MAX_LENGTH = {
+  CUMPLE: 700,
+  DISCLAIMER: 3000,
+};
+
+function getConfigMaxLength(tipo) {
+  return CONFIG_MAX_LENGTH[tipo] || 700;
+}
+
 function getEmpnit(req, res) {
   const empnit = req.headers['x-empnit'];
   if (!empnit) {
@@ -49,12 +58,13 @@ router.put('/:tipo', async (req, res) => {
 
   const detalles = req.body?.DETALLES != null ? String(req.body.DETALLES).trim() : '';
 
-  if (!detalles) {
+  if (tipo !== 'DISCLAIMER' && !detalles) {
     return res.status(400).json({ error: 'DETALLES es requerido' });
   }
 
-  if (detalles.length > 700) {
-    return res.status(400).json({ error: 'El mensaje no puede superar 700 caracteres' });
+  const maxLength = getConfigMaxLength(tipo);
+  if (detalles.length > maxLength) {
+    return res.status(400).json({ error: `El texto no puede superar ${maxLength} caracteres` });
   }
 
   try {

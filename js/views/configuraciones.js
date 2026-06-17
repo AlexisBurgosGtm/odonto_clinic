@@ -5,24 +5,39 @@ import { sanitizeText } from '../utils/sanitize.js';
 import { isViewMounted } from '../utils/view.js';
 
 const TIPO_CUMPLE = 'CUMPLE';
+const TIPO_DISCLAIMER = 'DISCLAIMER';
 
 let tiposGasto = [];
 
-async function loadMensajeCumple(viewGen) {
+async function loadConfigTexto(tipo, elementId, viewGen) {
+  const textarea = document.getElementById(elementId);
+  if (!textarea) return;
+
   try {
-    const config = await api.config.get(TIPO_CUMPLE);
+    const config = await api.config.get(tipo);
+    if (viewGen && !isViewMounted(viewGen)) return;
+    textarea.value = config.DETALLES || '';
+  } catch (error) {
     if (viewGen && !isViewMounted(viewGen)) return;
 
-    const textarea = document.getElementById('configCumpleMensaje');
-    if (textarea) {
-      textarea.value = config.DETALLES || '';
+    if (error.message?.includes('no encontrada')) {
+      textarea.value = '';
+      return;
     }
-    clearAlert('configuracionesAlert');
-  } catch (error) {
-    if (!viewGen || isViewMounted(viewGen)) {
-      showAlert('configuracionesAlert', error.message);
-    }
+
+    showAlert('configuracionesAlert', error.message);
   }
+}
+
+async function loadMensajeCumple(viewGen) {
+  await loadConfigTexto(TIPO_CUMPLE, 'configCumpleMensaje', viewGen);
+  if (!viewGen || isViewMounted(viewGen)) {
+    clearAlert('configuracionesAlert');
+  }
+}
+
+async function loadDisclaimer(viewGen) {
+  await loadConfigTexto(TIPO_DISCLAIMER, 'configDisclaimerTexto', viewGen);
 }
 
 function tipoGastoFormHtml(item = null) {
@@ -142,38 +157,74 @@ export function renderConfiguraciones() {
       </p>
 
       <div class="config-options-grid">
-        <div class="content-card config-option-card h-100">
-          <div class="config-option-header">
-            <div>
-              <h6 class="mb-1">
-                <i class="fa-solid fa-cake-candles me-2 text-primary"></i>
-                Mensaje de cumpleaños (WhatsApp)
-              </h6>
-              <p class="text-muted small mb-0">
-                Texto enviado al felicitar pacientes. La palabra <strong>paciente</strong> se reemplaza por el nombre del paciente.
-              </p>
+        <div class="config-options-stack">
+          <div class="content-card config-option-card">
+            <div class="config-option-header">
+              <div>
+                <h6 class="mb-1">
+                  <i class="fa-solid fa-file-signature me-2 text-primary"></i>
+                  Consentimiento Informado
+                </h6>
+                <p class="text-muted small mb-0">
+                  Párrafo incluido al pie de algunos documentos impresos, como el reporte de tratamientos del paciente.
+                </p>
+              </div>
             </div>
+
+            <form id="configDisclaimerForm" class="mt-3">
+              <div class="mb-3">
+                <label for="configDisclaimerTexto" class="form-label">Texto del consentimiento</label>
+                <textarea
+                  id="configDisclaimerTexto"
+                  class="form-control"
+                  rows="5"
+                  maxlength="3000"
+                  placeholder="Ej: El paciente declara haber sido informado sobre los procedimientos, riesgos y alternativas de tratamiento..."
+                ></textarea>
+                <div class="form-text">Máximo 3000 caracteres. Se imprime en letra pequeña al pie del documento.</div>
+              </div>
+
+              <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary btn-rounded" id="btnGuardarDisclaimer">
+                  <i class="fa-solid fa-floppy-disk me-1"></i>Guardar consentimiento
+                </button>
+              </div>
+            </form>
           </div>
 
-          <form id="configCumpleForm" class="mt-3">
-            <div class="mb-3">
-              <label for="configCumpleMensaje" class="form-label">Mensaje personalizado</label>
-              <textarea
-                id="configCumpleMensaje"
-                class="form-control"
-                rows="4"
-                maxlength="700"
-                placeholder="Ej: ¡Feliz cumpleaños, paciente! Te deseamos un excelente día."
-              ></textarea>
-              <div class="form-text">Máximo 700 caracteres. Use la palabra <em>paciente</em> donde quiera insertar el nombre.</div>
+          <div class="content-card config-option-card">
+            <div class="config-option-header">
+              <div>
+                <h6 class="mb-1">
+                  <i class="fa-solid fa-cake-candles me-2 text-primary"></i>
+                  Mensaje de cumpleaños (WhatsApp)
+                </h6>
+                <p class="text-muted small mb-0">
+                  Texto enviado al felicitar pacientes. La palabra <strong>paciente</strong> se reemplaza por el nombre del paciente.
+                </p>
+              </div>
             </div>
 
-            <div class="d-flex justify-content-end">
-              <button type="submit" class="btn btn-primary btn-rounded" id="btnGuardarCumple">
-                <i class="fa-solid fa-floppy-disk me-1"></i>Guardar mensaje
-              </button>
-            </div>
-          </form>
+            <form id="configCumpleForm" class="mt-3">
+              <div class="mb-3">
+                <label for="configCumpleMensaje" class="form-label">Mensaje personalizado</label>
+                <textarea
+                  id="configCumpleMensaje"
+                  class="form-control"
+                  rows="4"
+                  maxlength="700"
+                  placeholder="Ej: ¡Feliz cumpleaños, paciente! Te deseamos un excelente día."
+                ></textarea>
+                <div class="form-text">Máximo 700 caracteres. Use la palabra <em>paciente</em> donde quiera insertar el nombre.</div>
+              </div>
+
+              <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary btn-rounded" id="btnGuardarCumple">
+                  <i class="fa-solid fa-floppy-disk me-1"></i>Guardar mensaje
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
 
         <div class="content-card config-option-card h-100">
@@ -213,12 +264,17 @@ export function renderConfiguraciones() {
 
 export async function bindConfiguraciones(params = {}) {
   const { viewGen } = params;
-  const form = document.getElementById('configCumpleForm');
+  const formCumple = document.getElementById('configCumpleForm');
+  const formDisclaimer = document.getElementById('configDisclaimerForm');
 
-  await Promise.all([loadMensajeCumple(viewGen), loadTiposGasto(viewGen)]);
+  await Promise.all([
+    loadMensajeCumple(viewGen),
+    loadDisclaimer(viewGen),
+    loadTiposGasto(viewGen),
+  ]);
   if (viewGen && !isViewMounted(viewGen)) return;
 
-  form?.addEventListener('submit', async (e) => {
+  formCumple?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const textarea = document.getElementById('configCumpleMensaje');
@@ -238,6 +294,32 @@ export async function bindConfiguraciones(params = {}) {
 
       clearAlert('configuracionesAlert');
       await alertSuccess('Mensaje de cumpleaños guardado correctamente');
+    } catch (error) {
+      if (!viewGen || isViewMounted(viewGen)) {
+        showAlert('configuracionesAlert', error.message);
+      }
+    } finally {
+      if (!viewGen || isViewMounted(viewGen)) {
+        btn?.removeAttribute('disabled');
+      }
+    }
+  });
+
+  formDisclaimer?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const textarea = document.getElementById('configDisclaimerTexto');
+    const detalles = textarea?.value?.trim() || '';
+
+    const btn = document.getElementById('btnGuardarDisclaimer');
+    btn?.setAttribute('disabled', 'disabled');
+
+    try {
+      await api.config.update(TIPO_DISCLAIMER, { DETALLES: detalles });
+      if (viewGen && !isViewMounted(viewGen)) return;
+
+      clearAlert('configuracionesAlert');
+      await alertSuccess('Consentimiento informado guardado correctamente');
     } catch (error) {
       if (!viewGen || isViewMounted(viewGen)) {
         showAlert('configuracionesAlert', error.message);

@@ -414,13 +414,27 @@ function mountPrintFab() {
   btn.setAttribute('aria-label', 'Imprimir tratamientos');
   btn.title = 'Imprimir lista';
   btn.innerHTML = '<i class="fa-solid fa-print"></i>';
-  btn.addEventListener('click', () => printOrdersList());
+  btn.addEventListener('click', () => {
+    printOrdersList().catch((error) => {
+      void alertError(error.message || 'Error al imprimir');
+    });
+  });
   document.body.appendChild(btn);
 }
 
-function printOrdersList() {
+async function fetchDisclaimerTexto() {
+  try {
+    const config = await api.config.get('DISCLAIMER');
+    return config.DETALLES?.trim() || '';
+  } catch (_) {
+    return '';
+  }
+}
+
+async function printOrdersList() {
   try {
     const filtrados = getOrdersFiltrados();
+    const disclaimer = await fetchDisclaimerTexto();
     const nombre = pacienteActual?.NOMBRE || `Paciente #${codpacienteActual}`;
     const totalInicial = formatPrecio(calcularTotalPrecio());
     const totalFinal = formatPrecio(calcularTotalPrecioFinal());
@@ -444,6 +458,10 @@ function printOrdersList() {
           <td class="obs">${escapeHtml(o.OBS || '—')}</td>
         </tr>
       `).join('');
+
+    const disclaimerHtml = disclaimer
+      ? `<p class="disclaimer">${escapeHtml(disclaimer)}</p>`
+      : '';
 
     const printHtml = `<!DOCTYPE html>
 <html lang="es">
@@ -647,7 +665,7 @@ function printOrdersList() {
     }
     .firma-paciente {
       width: 280px;
-      margin: 24px auto 0;
+      margin: 52px auto 0;
       text-align: center;
     }
     .firma-linea {
@@ -667,6 +685,14 @@ function printOrdersList() {
       margin: 4px 0 0;
       font-size: 8.5pt;
       color: #475569;
+    }
+    .disclaimer {
+      margin: 0 0 16px;
+      font-size: 6pt;
+      line-height: 1.45;
+      color: #475569;
+      text-align: justify;
+      white-space: pre-wrap;
     }
   </style>
 </head>
@@ -707,6 +733,7 @@ function printOrdersList() {
         <span class="total">Total Final: ${escapeHtml(totalFinal)}</span>
       </div>
     </div>
+    ${disclaimerHtml}
     <div class="firma-paciente">
       <div class="firma-linea"></div>
       <p class="firma-label">Firma del paciente</p>
