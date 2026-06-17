@@ -7,6 +7,7 @@ import { isViewMounted } from '../utils/view.js';
 import { removePrintFab } from '../utils/floating-ui.js';
 import { mountNuevoFab } from '../utils/nuevo-fab.js';
 import { canAddPacienteTratamiento } from '../utils/roles.js';
+import { getPrintLogoUrl } from '../utils/empresa-logo.js';
 
 let codpacienteActual = null;
 let pacienteActual = null;
@@ -426,7 +427,7 @@ function printOrdersList() {
     const fechaImpresion = escapeHtml(new Date().toLocaleString('es-GT'));
     const nombreSafe = escapeHtml(nombre);
     const filtroSafe = escapeHtml(getFiltroLabel());
-    const logoUrl = escapeHtml(new URL('logo.jpeg', window.location.href).href);
+    const logoUrl = escapeHtml(getPrintLogoUrl());
     const pacienteSectionHtml = buildPrintPacienteSection(pacienteActual);
 
     const rowsHtml = filtrados.length === 0

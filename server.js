@@ -8,7 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 8005;
 const PUBLIC_DIR = path.join(__dirname);
 
-app.use(express.json());
+app.use(express.json({ limit: '3mb' }));
 app.use(express.static(PUBLIC_DIR, {
   extensions: ['html'],
   index: 'index.html',

@@ -3,6 +3,7 @@ import { getSession } from '../services/session.js';
 import { showAlert, clearAlert } from '../utils/alerts.js';
 import { alertError } from '../utils/swal.js';
 import { removePrintFab } from '../utils/floating-ui.js';
+import { getPrintLogoUrl } from '../utils/empresa-logo.js';
 import { isViewMounted } from '../utils/view.js';
 
 let codpacienteActual = null;
@@ -87,7 +88,7 @@ function printEstadoCuenta() {
     const nombreSafe = escapeHtml(nombre);
     const empresaSafe = escapeHtml(getSession()?.empresa || 'Clínica Dental');
     const fechaImpresion = escapeHtml(new Date().toLocaleString('es-GT'));
-    const logoUrl = escapeHtml(new URL('logo.jpeg', window.location.href).href);
+    const logoUrl = escapeHtml(getPrintLogoUrl());
 
     const totalAbonos = escapeHtml(formatPrecio(estadoCuenta.totalAbonos || 0));
     const totalPagos = escapeHtml(formatPrecio(estadoCuenta.totalPagos || 0));

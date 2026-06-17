@@ -5,6 +5,7 @@
 import { Router } from './router.js';
 import { api } from './services/api.js';
 import { setSession, clearSession, getSession } from './services/session.js';
+import { setSessionLogoFromHex, clearSessionLogo } from './utils/empresa-logo.js';
 import { getMenuForRole, getDefaultRoute, isRouteAllowed } from './utils/roles.js';
 import { bumpViewGeneration, isViewCurrent } from './utils/view.js';
 import { renderLogin, bindLoginEvents } from './views/login.js';
@@ -21,6 +22,7 @@ import { renderEmpresas, bindEmpresas } from './views/empresas.js';
 import { renderConfiguraciones, bindConfiguraciones } from './views/configuraciones.js';
 import { alertError, confirmAction } from './utils/swal.js';
 import { cleanupFloatingUi } from './utils/floating-ui.js';
+import { initThemeSystem } from './utils/themes.js';
 
 /* ─── Mapa de rutas → renderers ────────────── */
 const routes = {
@@ -241,6 +243,7 @@ function updateActiveNav(path) {
 function showLogin() {
   cleanupAgenda();
   cleanupFloatingUi();
+  clearSessionLogo();
   app.innerHTML = renderLogin();
   bindLoginEvents(handleLogin);
 }
@@ -257,10 +260,22 @@ async function handleLogin(usuario, clave) {
     empresa: data.empresa,
   });
 
+  clearSessionLogo();
+
+  try {
+    const logoData = await api.empresas.getLogo(data.empnit);
+    if (logoData?.LOGO) {
+      setSessionLogoFromHex(logoData.LOGO);
+    }
+  } catch (_) {
+    /* usar logo por defecto */
+  }
+
   renderLayout();
 }
 
 function logout() {
+  clearSessionLogo();
   clearSession();
   window.location.hash = '';
   showLogin();
@@ -268,6 +283,8 @@ function logout() {
 
 /* ─── Inicio — F5 siempre vuelve al login ──── */
 function init() {
+  initThemeSystem();
+  clearSessionLogo();
   clearSession();
   window.location.hash = '';
   showLogin();

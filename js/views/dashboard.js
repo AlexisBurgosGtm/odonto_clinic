@@ -65,11 +65,11 @@ function renderStats(stats) {
         </tr>
       `;
     } else {
-      ingresosBody.innerHTML = stats.ingresos.map((o) => `
+      ingresosBody.innerHTML = stats.ingresos.map((t) => `
         <tr>
-          <td>${o.PACIENTE || '—'}</td>
-          <td>${o.DESPROD || '—'}</td>
-          <td class="num text-danger fw-semibold">${formatPrecio(o.PRECIO_FINAL)}</td>
+          <td>${t.PACIENTE || '—'}</td>
+          <td>${t.OBS || '—'}</td>
+          <td class="num text-danger fw-semibold">${formatPrecio(t.MONTO)}</td>
         </tr>
       `).join('');
     }
@@ -208,7 +208,7 @@ export function renderDashboard() {
               <thead>
                 <tr>
                   <th>Paciente</th>
-                  <th>Tratamiento</th>
+                  <th>Observaciones</th>
                   <th class="text-end">Monto</th>
                 </tr>
               </thead>

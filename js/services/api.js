@@ -30,11 +30,18 @@ export const api = {
 
   empresas: {
     list: () => request('/api/empresas'),
+    get: (empnit) => request(`/api/empresas/${encodeURIComponent(empnit)}`),
+    getLogo: (empnit) => request(`/api/empresas/${encodeURIComponent(empnit)}/logo`),
     create: (body) => request('/api/empresas', { method: 'POST', body: JSON.stringify(body) }),
     update: (empnit, body) =>
       request(`/api/empresas/${encodeURIComponent(empnit)}`, {
         method: 'PUT',
         body: JSON.stringify(body),
+      }),
+    updateLogo: (empnit, LOGO) =>
+      request(`/api/empresas/${encodeURIComponent(empnit)}/logo`, {
+        method: 'PUT',
+        body: JSON.stringify({ LOGO }),
       }),
     delete: (empnit) =>
       request(`/api/empresas/${encodeURIComponent(empnit)}`, { method: 'DELETE' }),

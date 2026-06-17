@@ -23,9 +23,9 @@ router.get('/stats', async (req, res) => {
 
   try {
     const [[ingresos]] = await pool.query(
-      `SELECT COALESCE(SUM(PRECIO_FINAL), 0) AS total
-       FROM orders
-       WHERE EMPNIT = ? AND REALIZADO = 'SI' AND DATE(FECHA_REALIZADO) = ?`,
+      `SELECT COALESCE(SUM(MONTO), 0) AS total
+       FROM transacciones
+       WHERE EMPNIT = ? AND TIPO = 'ABONO' AND DATE(FECHA) = ?`,
       [empnit, fecha]
     );
 
@@ -68,12 +68,12 @@ router.get('/stats', async (req, res) => {
     );
 
     const [ingresosDetalle] = await pool.query(
-      `SELECT o.ID, o.PRECIO_FINAL, o.FECHA_REALIZADO, o.DESPROD,
+      `SELECT t.ID, t.MONTO, t.FECHA, t.OBS,
               p.NOMBRE AS PACIENTE
-       FROM orders o
-       LEFT JOIN pacientes p ON p.CODPACIENTE = o.CODPACIENTE AND p.EMPNIT = o.EMPNIT
-       WHERE o.EMPNIT = ? AND o.REALIZADO = 'SI' AND DATE(o.FECHA_REALIZADO) = ?
-       ORDER BY o.FECHA_REALIZADO DESC
+       FROM transacciones t
+       LEFT JOIN pacientes p ON p.CODPACIENTE = t.CODPACIENTE AND p.EMPNIT = t.EMPNIT
+       WHERE t.EMPNIT = ? AND t.TIPO = 'ABONO' AND DATE(t.FECHA) = ?
+       ORDER BY t.FECHA DESC, t.ID DESC
        LIMIT 15`,
       [empnit, fecha]
     );

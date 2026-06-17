@@ -1,4 +1,5 @@
 import { alertError } from './swal.js';
+import { getPrintLogoUrl } from './empresa-logo.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -62,7 +63,7 @@ export function printComprobantePago(transaccion, { empresa } = {}) {
       ? `<div class="row"><span class="label">Observaciones</span><span class="value">${escapeHtml(transaccion.OBS)}</span></div>`
       : '';
     const fechaImpresion = escapeHtml(new Date().toLocaleString('es-GT'));
-    const logoUrl = escapeHtml(new URL('logo.jpeg', window.location.href).href);
+    const logoUrl = escapeHtml(getPrintLogoUrl());
 
     const printHtml = `<!DOCTYPE html>
 <html lang="es">

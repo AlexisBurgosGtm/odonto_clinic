@@ -2,14 +2,16 @@ import { api } from '../services/api.js';
 import { showAlert, clearAlert } from '../utils/alerts.js';
 import { confirmAction, alertError, alertSuccess, openFormDialog } from '../utils/swal.js';
 import { sanitizeText } from '../utils/sanitize.js';
+import { fileToHex } from '../utils/empresa-logo.js';
 
 let empresas = [];
+let logoInput = null;
 
 export function renderEmpresas() {
   return `
     <div id="empresasAlert"></div>
 
-    <div class="content-card">
+    <div class="content-card view-empresas">
       <div class="content-card-header">
         <h5><i class="fa-solid fa-building me-2 text-primary"></i>Listado de empresas</h5>
         <button class="btn btn-sm btn-nuevo btn-rounded" id="btnNuevaEmpresa">
@@ -23,11 +25,12 @@ export function renderEmpresas() {
             <tr>
               <th>EMPNIT</th>
               <th>Empresa</th>
+              <th style="width: 120px;">Logo</th>
               <th class="text-end" style="width: 120px;">Acciones</th>
             </tr>
           </thead>
           <tbody id="empresasTableBody">
-            <tr><td colspan="3" class="text-center text-muted py-4">Cargando...</td></tr>
+            <tr><td colspan="4" class="text-center text-muted py-4">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -51,6 +54,24 @@ function empresaFormHtml(isEdit) {
   `;
 }
 
+function renderLogoCell(empresa) {
+  const tieneLogo = Number(empresa.TIENE_LOGO) === 1;
+
+  return `
+    <div class="empresa-logo-cell">
+      ${tieneLogo ? '<span class="badge-estado badge-estado-activo empresa-logo-badge">Con logo</span>' : '<span class="text-muted small">Sin logo</span>'}
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-success btn-action"
+        data-logo="${empresa.EMPNIT}"
+        title="Cargar logo"
+      >
+        <i class="fa-solid fa-image"></i>
+      </button>
+    </div>
+  `;
+}
+
 function renderTable() {
   const tbody = document.getElementById('empresasTableBody');
   if (!tbody) return;
@@ -58,7 +79,7 @@ function renderTable() {
   if (empresas.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="3" class="text-center text-muted py-4">No hay empresas registradas</td>
+        <td colspan="4" class="text-center text-muted py-4">No hay empresas registradas</td>
       </tr>
     `;
     return;
@@ -68,6 +89,7 @@ function renderTable() {
     <tr>
       <td><span class="badge-empnit">${e.EMPNIT}</span></td>
       <td>${e.EMPRESA || '—'}</td>
+      <td>${renderLogoCell(e)}</td>
       <td class="text-end">
         <button class="btn btn-sm btn-outline-primary btn-action" data-edit="${e.EMPNIT}" title="Editar">
           <i class="fa-solid fa-pen"></i>
@@ -87,6 +109,44 @@ async function loadEmpresas() {
     clearAlert('empresasAlert');
   } catch (error) {
     showAlert('empresasAlert', error.message);
+  }
+}
+
+function ensureLogoInput() {
+  if (logoInput) return logoInput;
+
+  logoInput = document.createElement('input');
+  logoInput.type = 'file';
+  logoInput.accept = 'image/jpeg,image/png,image/webp';
+  logoInput.hidden = true;
+  logoInput.addEventListener('change', handleLogoFileSelected);
+  document.body.appendChild(logoInput);
+  return logoInput;
+}
+
+let pendingLogoEmpnit = null;
+
+function openLogoPicker(empnit) {
+  pendingLogoEmpnit = empnit;
+  const input = ensureLogoInput();
+  input.value = '';
+  input.click();
+}
+
+async function handleLogoFileSelected() {
+  const empnit = pendingLogoEmpnit;
+  const file = logoInput?.files?.[0];
+  pendingLogoEmpnit = null;
+
+  if (!empnit || !file) return;
+
+  try {
+    const hex = await fileToHex(file);
+    await api.empresas.updateLogo(empnit, hex);
+    await loadEmpresas();
+    await alertSuccess('Logo de la empresa actualizado');
+  } catch (error) {
+    await alertError(error.message);
   }
 }
 
@@ -158,6 +218,12 @@ export function bindEmpresas() {
   document.getElementById('empresasTableBody')?.addEventListener('click', (e) => {
     const editBtn = e.target.closest('[data-edit]');
     const deleteBtn = e.target.closest('[data-delete]');
+    const logoBtn = e.target.closest('[data-logo]');
+
+    if (logoBtn) {
+      openLogoPicker(logoBtn.dataset.logo);
+      return;
+    }
 
     if (editBtn) {
       const empresa = empresas.find((emp) => emp.EMPNIT === editBtn.dataset.edit);
