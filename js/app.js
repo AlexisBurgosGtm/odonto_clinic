@@ -20,6 +20,8 @@ import { renderPacienteEstadoCuenta, bindPacienteEstadoCuenta } from './views/pa
 import { renderEmpleados, bindEmpleados } from './views/empleados.js';
 import { renderEmpresas, bindEmpresas } from './views/empresas.js';
 import { renderConfiguraciones, bindConfiguraciones } from './views/configuraciones.js';
+import { renderDocumentos, bindDocumentos } from './views/documentos.js';
+import { renderCredencialesFel, bindCredencialesFel } from './views/credenciales-fel.js';
 import { renderGastos, bindGastos } from './views/gastos.js';
 import { renderReportes, bindReportes } from './views/reportes.js';
 import { alertError, confirmAction } from './utils/swal.js';
@@ -50,6 +52,8 @@ const routes = {
   '/tratamientos':    { title: 'Tratamientos',    render: renderTratamientos, bind: bindTratamientos },
   '/empleados':       { title: 'Empleados',       render: renderEmpleados, bind: bindEmpleados },
   '/empresas':        { title: 'Empresas',        render: renderEmpresas, bind: bindEmpresas },
+  '/documentos':        { title: 'Documentos',        render: renderDocumentos, bind: bindDocumentos },
+  '/credenciales-fel':  { title: 'Credenciales FEL',  render: renderCredencialesFel, bind: bindCredencialesFel },
   '/configuraciones': { title: 'Configuraciones', render: renderConfiguraciones, bind: bindConfiguraciones },
 };
 

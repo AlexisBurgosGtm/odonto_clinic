@@ -1193,6 +1193,8 @@ body {
 
 .badge-estado-activo { background: #d1fae5; color: #059669; }
 .badge-estado-inactivo { background: #fee2e2; color: #dc2626; }
+.badge-estado-pendiente { background: #fef3c7; color: #d97706; }
+.badge-estado-anulado { background: #e2e8f0; color: #475569; }
 
 .modal-content {
   border-radius: var(--radius);
@@ -2471,4 +2473,24 @@ body:has(.btn-nuevo-fab):has(.btn-print-fab) .btn-nuevo-fab {
   .horas-disponibles-medico {
     font-size: 0.85rem;
   }
+}
+
+.fel-section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0.5rem 0 1rem;
+  color: var(--color-primary-dark);
+}
+
+.fel-mini {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  margin-top: 0.2rem;
+  font-family: ui-monospace, monospace;
+}
+
+.view-credenciales-fel .form-label,
+.view-documentos .form-label {
+  font-size: 0.82rem;
+  font-weight: 600;
 }

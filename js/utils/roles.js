@@ -10,6 +10,8 @@ const MENU_ITEMS = [
 
   { path: '/transacciones',   label: 'Transacciones', icon: 'fa-solid fa-money-bill-transfer', roles: ['GERENTE', 'SECRETARIA'] },
 
+  { path: '/documentos',      label: 'Documentos',    icon: 'fa-solid fa-file-invoice', roles: ['GERENTE', 'SECRETARIA', 'MEDICO'] },
+
   { path: '/gastos',          label: 'Gastos',        icon: 'fa-solid fa-receipt', roles: ['GERENTE'] },
 
   { path: '/reportes',        label: 'Reportes',      icon: 'fa-solid fa-file-lines', roles: ['GERENTE'] },
@@ -19,6 +21,8 @@ const MENU_ITEMS = [
   { path: '/empleados',       label: 'Empleados',     icon: 'fa-solid fa-user-doctor', roles: ['GERENTE'] },
 
   { path: '/empresas',        label: 'Empresas',      icon: 'fa-solid fa-building', roles: ['GERENTE'] },
+
+  { path: '/credenciales-fel', label: 'Credenciales FEL', icon: 'fa-solid fa-key', roles: ['GERENTE'] },
 
   { path: '/configuraciones', label: 'Configuraciones', icon: 'fa-solid fa-gear', roles: ['GERENTE'] },
 
@@ -40,9 +44,9 @@ const ROLE_PATHS = {
 
   GERENTE: MENU_ITEMS.map((item) => item.path).concat(PACIENTE_SUBROUTES),
 
-  SECRETARIA: ['/agenda', '/pacientes', '/cumpleaneros', '/transacciones', '/tratamientos', ...PACIENTE_SUBROUTES],
+  SECRETARIA: ['/agenda', '/pacientes', '/cumpleaneros', '/transacciones', '/tratamientos', '/documentos', ...PACIENTE_SUBROUTES],
 
-  MEDICO: ['/agenda', '/pacientes', '/cumpleaneros', '/pacientes/:codpaciente/tratamientos', '/pacientes/:codpaciente/estado-cuenta'],
+  MEDICO: ['/agenda', '/pacientes', '/cumpleaneros', '/documentos', '/pacientes/:codpaciente/tratamientos', '/pacientes/:codpaciente/estado-cuenta'],
 
 };
 

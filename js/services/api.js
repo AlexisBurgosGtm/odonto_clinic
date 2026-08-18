@@ -201,4 +201,35 @@ export const api = {
       request(`/api/gastos-tipos/${codtipo}`, { method: 'PUT', body: JSON.stringify(body) }),
     delete: (codtipo) => request(`/api/gastos-tipos/${codtipo}`, { method: 'DELETE' }),
   },
+
+  documentos: {
+    list: ({ fechaInicio, fechaFin, estado } = {}) => {
+      const params = new URLSearchParams();
+      if (fechaInicio) params.set('fechaInicio', fechaInicio);
+      if (fechaFin) params.set('fechaFin', fechaFin);
+      if (estado) params.set('estado', estado);
+      const qs = params.toString();
+      return request(`/api/documentos${qs ? `?${qs}` : ''}`);
+    },
+    get: (id) => request(`/api/documentos/${id}`),
+    create: (body) => request('/api/documentos', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id, body) =>
+      request(`/api/documentos/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    certificar: (id) =>
+      request(`/api/documentos/${id}/certificar`, { method: 'POST', body: JSON.stringify({}) }),
+    anular: (id, motivo) =>
+      request(`/api/documentos/${id}/anular`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+    delete: (id) => request(`/api/documentos/${id}`, { method: 'DELETE' }),
+  },
+
+  credencialesFel: {
+    get: () => request('/api/credenciales-fel'),
+    emisor: () => request('/api/credenciales-fel/emisor'),
+    save: (body) => request('/api/credenciales-fel', { method: 'PUT', body: JSON.stringify(body) }),
+    consultarNit: (nit) =>
+      request('/api/credenciales-fel/consultar-nit', {
+        method: 'POST',
+        body: JSON.stringify({ nit }),
+      }),
+  },
 };

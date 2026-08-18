@@ -94,19 +94,60 @@ function filterProductos(query) {
   });
 }
 
-function addOrderFormHtml(producto) {
+function selectPiezaHtml() {
   return `
     <div class="swal-form text-start">
-      <div class="mb-3">
-        <label class="form-label">Tratamiento</label>
-        <input type="text" class="form-control" value="${producto.DESPROD || producto.CODPROD}" readonly>
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Pieza <span class="text-danger">*</span></label>
+      <div class="mb-0">
+        <label class="form-label" for="swal-pieza">Pieza dental <span class="text-danger">*</span></label>
         <select id="swal-pieza" class="form-select">
           <option value="">— Seleccionar pieza —</option>
           ${piezaOptionsHtml()}
         </select>
+      </div>
+    </div>
+  `;
+}
+
+async function openSelectPieza() {
+  if (piezas.length === 0) {
+    await alertError('No hay piezas registradas en el sistema');
+    return null;
+  }
+
+  const result = await SwalTheme.fire({
+    title: 'Seleccionar pieza dental',
+    html: selectPiezaHtml(),
+    width: '420px',
+    showCancelButton: true,
+    confirmButtonText: 'Continuar',
+    focusConfirm: false,
+    preConfirm: () => {
+      const PIEZA = document.getElementById('swal-pieza')?.value;
+      if (!PIEZA) {
+        Swal.showValidationMessage('Debe seleccionar una pieza');
+        return false;
+      }
+      return PIEZA;
+    },
+    didOpen: () => {
+      document.getElementById('swal-pieza')?.focus();
+    },
+  });
+
+  if (!result.isConfirmed) return null;
+  return result.value;
+}
+
+function addOrderFormHtml(producto, pieza = '') {
+  return `
+    <div class="swal-form text-start">
+      <div class="mb-3">
+        <label class="form-label">Pieza <span class="text-danger">*</span></label>
+        <input type="text" id="swal-pieza" class="form-control" value="${pieza}" readonly>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Tratamiento</label>
+        <input type="text" class="form-control" value="${producto.DESPROD || producto.CODPROD}" readonly>
       </div>
       <div class="mb-3">
         <label class="form-label">Precio <span class="text-danger">*</span></label>
@@ -196,9 +237,13 @@ function hideProductoSuggestions(listId = 'productoSuggestions') {
   document.getElementById(listId)?.classList.remove('open');
 }
 
-function nuevoTratamientoPickerHtml() {
+function nuevoTratamientoPickerHtml(pieza) {
   return `
     <div class="swal-form text-start">
+      <div class="mb-3">
+        <label class="form-label">Pieza dental</label>
+        <input type="text" class="form-control" value="${pieza}" readonly>
+      </div>
       <label class="form-label" for="swal-producto-buscar">Buscar tratamiento</label>
       <input
         type="search"
@@ -212,7 +257,7 @@ function nuevoTratamientoPickerHtml() {
   `;
 }
 
-function bindNuevoTratamientoPicker() {
+function bindNuevoTratamientoPicker(pieza) {
   const input = document.getElementById('swal-producto-buscar');
   const list = document.getElementById('swal-producto-suggestions');
   if (!input || !list) return;
@@ -240,7 +285,7 @@ function bindNuevoTratamientoPicker() {
     if (!producto) return;
 
     Swal.close();
-    await openAddOrderForm(producto);
+    await openAddOrderForm(producto, pieza);
   });
 
   setTimeout(() => input.focus(), 80);
@@ -252,14 +297,17 @@ async function openNuevoTratamientoPicker() {
     return;
   }
 
+  const pieza = await openSelectPieza();
+  if (!pieza) return;
+
   await SwalTheme.fire({
-    title: 'Nuevo tratamiento',
-    html: nuevoTratamientoPickerHtml(),
+    title: 'Seleccionar tratamiento',
+    html: nuevoTratamientoPickerHtml(pieza),
     width: '520px',
     showConfirmButton: false,
     showCancelButton: true,
     cancelButtonText: 'Cerrar',
-    didOpen: bindNuevoTratamientoPicker,
+    didOpen: () => bindNuevoTratamientoPicker(pieza),
   });
 }
 
@@ -942,7 +990,54 @@ function bindProductoSearch() {
 
   if (!input || !list) return;
 
-  input.addEventListener('input', () => {
+  const defaultPlaceholder = input.placeholder;
+  let piezaBusqueda = null;
+  let solicitandoPieza = false;
+
+  const resetPiezaBusqueda = () => {
+    piezaBusqueda = null;
+    input.placeholder = defaultPlaceholder;
+  };
+
+  const asegurarPieza = async () => {
+    if (piezaBusqueda || solicitandoPieza) return Boolean(piezaBusqueda);
+
+    solicitandoPieza = true;
+    input.blur();
+    const pieza = await openSelectPieza();
+    solicitandoPieza = false;
+
+    if (!pieza) {
+      resetPiezaBusqueda();
+      return false;
+    }
+
+    piezaBusqueda = pieza;
+    input.placeholder = `Tratamiento para pieza ${pieza} (mín. 3 caracteres)...`;
+    setTimeout(() => input.focus(), 80);
+    return true;
+  };
+
+  input.addEventListener('focus', () => {
+    if (!piezaBusqueda && !solicitandoPieza) {
+      asegurarPieza();
+      return;
+    }
+
+    if (input.value.trim().length >= 3) {
+      renderProductoSuggestions(filterProductos(input.value));
+    }
+  });
+
+  input.addEventListener('input', async () => {
+    if (!piezaBusqueda) {
+      const ok = await asegurarPieza();
+      if (!ok) {
+        input.value = '';
+        return;
+      }
+    }
+
     const query = input.value;
     if (query.trim().length < 3) {
       hideProductoSuggestions();
@@ -951,14 +1046,15 @@ function bindProductoSearch() {
     renderProductoSuggestions(filterProductos(query));
   });
 
-  input.addEventListener('focus', () => {
-    if (input.value.trim().length >= 3) {
-      renderProductoSuggestions(filterProductos(input.value));
-    }
-  });
-
   input.addEventListener('blur', () => {
-    setTimeout(hideProductoSuggestions, 150);
+    setTimeout(() => {
+      hideProductoSuggestions();
+      if (solicitandoPieza || Swal.isVisible()) return;
+      if (document.activeElement === input) return;
+      if (document.activeElement?.closest?.('.producto-autocomplete')) return;
+      resetPiezaBusqueda();
+      input.value = '';
+    }, 200);
   });
 
   list.addEventListener('mousedown', async (e) => {
@@ -968,24 +1064,34 @@ function bindProductoSearch() {
     const producto = productos.find((p) => p.ID == btn.dataset.id);
     if (!producto) return;
 
+    const pieza = piezaBusqueda;
     input.value = '';
     hideProductoSuggestions();
-    await openAddOrderForm(producto);
+    resetPiezaBusqueda();
+
+    if (!pieza) {
+      const piezaNueva = await openSelectPieza();
+      if (!piezaNueva) return;
+      await openAddOrderForm(producto, piezaNueva);
+      return;
+    }
+
+    await openAddOrderForm(producto, pieza);
   });
 }
 
-async function openAddOrderForm(producto) {
-  if (piezas.length === 0) {
-    await alertError('No hay piezas registradas en el sistema');
+async function openAddOrderForm(producto, pieza) {
+  if (!pieza) {
+    await alertError('Debe seleccionar una pieza dental');
     return;
   }
 
   const result = await openFormDialog({
     title: 'Agregar tratamiento',
-    html: addOrderFormHtml(producto),
+    html: addOrderFormHtml(producto, pieza),
     width: '480px',
     preConfirm: async () => {
-      const PIEZA = document.getElementById('swal-pieza').value;
+      const PIEZA = document.getElementById('swal-pieza').value || pieza;
       const PRECIO = document.getElementById('swal-precio').value;
 
       if (!PIEZA) {
@@ -1180,7 +1286,7 @@ export function renderPacienteTratamientos() {
             type="search"
             id="productoSearch"
             class="form-control"
-            placeholder="Buscar tratamiento para agregar (mín. 3 caracteres)..."
+            placeholder="Agregar tratamiento (se pedirá la pieza primero)..."
             autocomplete="off"
           >
           <ul class="paciente-suggestions" id="productoSuggestions"></ul>
