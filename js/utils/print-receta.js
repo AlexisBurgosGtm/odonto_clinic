@@ -108,6 +108,7 @@ export function printReceta(receta, { empresa, piePagina } = {}) {
       padding-bottom: 4px;
     }
     section { margin-bottom: 16px; }
+    section.seccion-medicamentos { margin-bottom: 36px; }
     ul { margin: 0; padding-left: 1.2rem; }
     li { margin-bottom: 0.35rem; }
     .empty { color: #777; font-style: italic; margin: 0; }
@@ -152,7 +153,7 @@ export function printReceta(receta, { empresa, piePagina } = {}) {
     </div>
   </div>
 
-  <section>
+  <section class="seccion-medicamentos">
     <h2>Medicamentos</h2>
     ${listHtml(detalle.medicamentos, 'Sin medicamentos')}
   </section>
