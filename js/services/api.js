@@ -149,6 +149,16 @@ export const api = {
     delete: (id) => request(`/api/orders/${id}`, { method: 'DELETE' }),
   },
 
+  odontograma: {
+    getByPaciente: (codpaciente) => request(`/api/odontograma/paciente/${codpaciente}`),
+    updatePieza: (codpaciente, pieza, body) =>
+      request(`/api/odontograma/paciente/${codpaciente}/pieza/${encodeURIComponent(pieza)}`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    estados: () => request('/api/odontograma/estados'),
+  },
+
   dashboard: {
     stats: ({ empnit, fechaInicio, fechaFin } = {}) => {
       const params = new URLSearchParams();
@@ -200,6 +210,29 @@ export const api = {
     update: (codtipo, body) =>
       request(`/api/gastos-tipos/${codtipo}`, { method: 'PUT', body: JSON.stringify(body) }),
     delete: (codtipo) => request(`/api/gastos-tipos/${codtipo}`, { method: 'DELETE' }),
+  },
+
+  configRecetas: {
+    list: () => request('/api/config-recetas'),
+    create: (body) => request('/api/config-recetas', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id, body) =>
+      request(`/api/config-recetas/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    delete: (id) => request(`/api/config-recetas/${id}`, { method: 'DELETE' }),
+  },
+
+  recetas: {
+    list: ({ fechaInicio, fechaFin } = {}) => {
+      const params = new URLSearchParams();
+      if (fechaInicio) params.set('fechaInicio', fechaInicio);
+      if (fechaFin) params.set('fechaFin', fechaFin);
+      const qs = params.toString();
+      return request(`/api/recetas${qs ? `?${qs}` : ''}`);
+    },
+    get: (id) => request(`/api/recetas/${id}`),
+    create: (body) => request('/api/recetas', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id, body) =>
+      request(`/api/recetas/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    delete: (id) => request(`/api/recetas/${id}`, { method: 'DELETE' }),
   },
 
   documentos: {

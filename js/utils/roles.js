@@ -6,6 +6,8 @@ const MENU_ITEMS = [
 
   { path: '/pacientes',       label: 'Pacientes',     icon: 'fa-solid fa-users', roles: ['GERENTE', 'SECRETARIA', 'MEDICO'] },
 
+  { path: '/recetas',         label: 'Recetas',       icon: 'fa-solid fa-prescription', roles: ['GERENTE', 'SECRETARIA', 'MEDICO'] },
+
   { path: '/cumpleaneros',    label: 'Cumpleañeros',  icon: 'fa-solid fa-cake-candles', roles: ['GERENTE', 'SECRETARIA', 'MEDICO'] },
 
   { path: '/transacciones',   label: 'Transacciones', icon: 'fa-solid fa-money-bill-transfer', roles: ['GERENTE', 'SECRETARIA'] },
@@ -32,6 +34,8 @@ const MENU_ITEMS = [
 
 const PACIENTE_SUBROUTES = [
 
+  '/pacientes/:codpaciente/odontograma',
+
   '/pacientes/:codpaciente/tratamientos',
 
   '/pacientes/:codpaciente/estado-cuenta',
@@ -44,9 +48,9 @@ const ROLE_PATHS = {
 
   GERENTE: MENU_ITEMS.map((item) => item.path).concat(PACIENTE_SUBROUTES),
 
-  SECRETARIA: ['/agenda', '/pacientes', '/cumpleaneros', '/transacciones', '/tratamientos', '/documentos', ...PACIENTE_SUBROUTES],
+  SECRETARIA: ['/agenda', '/pacientes', '/recetas', '/cumpleaneros', '/transacciones', '/tratamientos', '/documentos', ...PACIENTE_SUBROUTES],
 
-  MEDICO: ['/agenda', '/pacientes', '/cumpleaneros', '/documentos', '/pacientes/:codpaciente/tratamientos', '/pacientes/:codpaciente/estado-cuenta'],
+  MEDICO: ['/agenda', '/pacientes', '/recetas', '/cumpleaneros', '/documentos', ...PACIENTE_SUBROUTES],
 
 };
 
@@ -55,6 +59,8 @@ const ROLE_PATHS = {
 function resolvePacienteSubPath(path) {
 
   if (!path.startsWith('/pacientes/')) return null;
+
+  if (path.includes('/odontograma')) return '/pacientes/:codpaciente/odontograma';
 
   if (path.includes('/tratamientos')) return '/pacientes/:codpaciente/tratamientos';
 
@@ -141,5 +147,3 @@ export function isRouteAllowed(tipo, path) {
   return allowed.includes(basePath);
 
 }
-
-

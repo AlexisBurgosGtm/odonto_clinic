@@ -1,10 +1,12 @@
 const express = require('express');
 const { pool } = require('../db/mysql');
+const { normalizeTipoPaciente } = require('../lib/odontograma-piezas');
 
 const router = express.Router();
 
 const PACIENTE_FIELDS = [
   'CODPACIENTE', 'EMPNIT', 'NOMBRE', 'DIRECCION', 'TELEFONOS', 'EMAIL', 'NACIMIENTO',
+  'TIPO_PACIENTE',
   'D_ALERGIAS', 'D_ASMA', 'D_HEPATITIS', 'D_ANTIBIOTICOS', 'D_VIH',
   'D_HIPERTENSION', 'D_HIPOTENSION', 'D_TUBERCULOSIS',
   'E_MEDICAMENTOS', 'E_SENSIBILIDAD_MEDICAMENTOS', 'E_DETALLES',
@@ -37,6 +39,7 @@ function pickPacienteBody(body) {
     TELEFONOS: body.TELEFONOS?.trim() || null,
     EMAIL: body.EMAIL?.trim() || null,
     NACIMIENTO: body.NACIMIENTO || null,
+    TIPO_PACIENTE: normalizeTipoPaciente(body.TIPO_PACIENTE),
   };
 
   D_FIELDS.forEach((field) => {

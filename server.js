@@ -4,6 +4,8 @@ const express = require('express');
 const path = require('path');
 const { pool, testConnection } = require('./db/mysql');
 const { ensureFelTables } = require('./lib/ensure-fel-tables');
+const { ensureOdontograma } = require('./lib/ensure-odontograma');
+const { ensureEmpresas } = require('./lib/ensure-empresas');
 
 const app = express();
 const PORT = process.env.PORT || 8005;
@@ -35,11 +37,14 @@ app.use('/api/orders', require('./routes/orders'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/transacciones', require('./routes/transacciones'));
 app.use('/api/gastos-tipos', require('./routes/gastos-tipos'));
+app.use('/api/config-recetas', require('./routes/config-recetas'));
+app.use('/api/recetas', require('./routes/recetas'));
 app.use('/api/gastos', require('./routes/gastos'));
 app.use('/api/reportes', require('./routes/reportes'));
 app.use('/api/config', require('./routes/config'));
 app.use('/api/documentos', require('./routes/documentos'));
 app.use('/api/credenciales-fel', require('./routes/credenciales-fel'));
+app.use('/api/odontograma', require('./routes/odontograma'));
 
 app.get('/manifest.webmanifest', (_req, res) => {
   res.type('application/manifest+json');
@@ -54,6 +59,8 @@ async function startServer() {
   try {
     await testConnection();
     await ensureFelTables();
+    await ensureOdontograma();
+    await ensureEmpresas();
     console.log(`MySQL conectado — ${process.env.DB_HOST}/${process.env.DB_DATABASE}`);
   } catch (error) {
     console.error('Error al conectar con MySQL:', error.message);

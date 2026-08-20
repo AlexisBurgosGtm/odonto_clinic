@@ -13,7 +13,7 @@ router.post('/login', async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT e.CODEMP, e.EMPNIT, e.EMPLEADO, e.TIPO, e.USUARIO, e.HABILITADO,
-              emp.EMPRESA
+              emp.EMPRESA, emp.DIRECCION AS EMPRESA_DIRECCION, emp.TELEFONOS AS EMPRESA_TELEFONOS
        FROM empleados e
        LEFT JOIN empresas emp ON emp.EMPNIT = e.EMPNIT
        WHERE e.USUARIO = ? AND e.CLAVE = ?`,
@@ -37,6 +37,8 @@ router.post('/login', async (req, res) => {
       tipo: empleado.TIPO,
       usuario: empleado.USUARIO,
       empresa: empleado.EMPRESA,
+      empresaDireccion: empleado.EMPRESA_DIRECCION || null,
+      empresaTelefonos: empleado.EMPRESA_TELEFONOS || null,
     });
   } catch (error) {
     console.error('Error en login:', error.message);

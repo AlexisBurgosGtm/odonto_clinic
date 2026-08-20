@@ -1,5 +1,6 @@
 import { alertError } from './swal.js';
 import { getPrintLogoUrl } from './empresa-logo.js';
+import { getEmpresaPrintData, empresaContactHtml, empresaContactCss } from './empresa-print.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -119,7 +120,9 @@ export function printReporte(reporte, { empresa } = {}) {
     }
 
     const config = getReportConfig(reporte);
-    const empresaNombre = escapeHtml(empresa?.trim() || reporte.empresa || 'Clínica Dental');
+    const empresaInfo = getEmpresaPrintData(empresa || reporte.empresa);
+    const empresaNombre = escapeHtml(empresaInfo.nombre);
+    const contactoHtml = empresaContactHtml(empresaInfo);
     const titulo = escapeHtml(config.titulo);
     const periodo = escapeHtml(config.periodo);
     const total = escapeHtml(formatPrecio(reporte.total));
@@ -171,6 +174,7 @@ export function printReporte(reporte, { empresa } = {}) {
       color: #334155;
       font-size: 9.5pt;
     }
+    ${empresaContactCss()}
     .titulo {
       text-align: center;
       font-size: 11pt;
@@ -243,6 +247,7 @@ export function printReporte(reporte, { empresa } = {}) {
       <img src="${logoUrl}" alt="Logo">
       <div class="header-text">
         <h1>${empresaNombre}</h1>
+        ${contactoHtml}
         <p>Sistema de gestión — Clínica Dental</p>
       </div>
     </div>

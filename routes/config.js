@@ -6,6 +6,7 @@ const router = express.Router();
 const CONFIG_MAX_LENGTH = {
   CUMPLE: 700,
   DISCLAIMER: 3000,
+  RECETA_PIE: 1500,
 };
 
 function getConfigMaxLength(tipo) {
@@ -58,7 +59,7 @@ router.put('/:tipo', async (req, res) => {
 
   const detalles = req.body?.DETALLES != null ? String(req.body.DETALLES).trim() : '';
 
-  if (tipo !== 'DISCLAIMER' && !detalles) {
+  if (tipo !== 'DISCLAIMER' && tipo !== 'RECETA_PIE' && !detalles) {
     return res.status(400).json({ error: 'DETALLES es requerido' });
   }
 

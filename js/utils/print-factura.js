@@ -1,5 +1,6 @@
 import { alertError } from './swal.js';
 import { getPrintLogoUrl } from './empresa-logo.js';
+import { getEmpresaPrintData, empresaContactHtml, empresaContactCss } from './empresa-print.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -42,7 +43,12 @@ export function printFactura(documento, { empresa, emisor } = {}) {
     const importe = Number(documento.IMPORTE) || 0;
     const iva = esPeq ? 0 : round2(importe - round2(importe / 1.12));
     const gravable = esPeq ? importe : round2(importe - iva);
-    const empresaNombre = escapeHtml(emisor?.NOMBRE_COMERCIAL || emisor?.NOMBRE_EMISOR || empresa?.trim() || 'Clínica Dental');
+    const empresaInfo = getEmpresaPrintData(empresa);
+    const empresaNombre = escapeHtml(emisor?.NOMBRE_COMERCIAL || emisor?.NOMBRE_EMISOR || empresaInfo.nombre);
+    const contactoHtml = empresaContactHtml({
+      direccion: emisor?.DIRECCION || empresaInfo.direccion,
+      telefonos: empresaInfo.telefonos,
+    });
     const nitEmisor = escapeHtml(emisor?.NIT_EMISOR || '—');
     const fechaImpresion = escapeHtml(new Date().toLocaleString('es-GT'));
     const logoUrl = escapeHtml(getPrintLogoUrl());
@@ -88,6 +94,7 @@ export function printFactura(documento, { empresa, emisor } = {}) {
     .logo { width: 72px; height: 72px; object-fit: contain; }
     h1 { font-size: 18pt; margin: 0 0 4px; }
     .muted { color: #555; font-size: 10pt; }
+    ${empresaContactCss()}
     .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
     .box { border: 1px solid #ccc; padding: 10px 12px; }
     .box h3 { margin: 0 0 6px; font-size: 10pt; text-transform: uppercase; color: #555; }
@@ -110,6 +117,7 @@ export function printFactura(documento, { empresa, emisor } = {}) {
     <img class="logo" src="${logoUrl}" alt="Logo">
     <div>
       <h1>${empresaNombre}</h1>
+      ${contactoHtml}
       <div class="muted">NIT emisor: ${nitEmisor}</div>
       <div class="muted">${escapeHtml(tipoLabel(documento.TIPO_DTE))} · ${escapeHtml(documento.CONCRE || 'CONTADO')}</div>
     </div>

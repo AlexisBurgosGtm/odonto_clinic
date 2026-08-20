@@ -4,6 +4,7 @@ import { showAlert, clearAlert } from '../utils/alerts.js';
 import { alertError } from '../utils/swal.js';
 import { removePrintFab } from '../utils/floating-ui.js';
 import { getPrintLogoUrl } from '../utils/empresa-logo.js';
+import { getEmpresaPrintData, empresaContactHtml, empresaContactCss } from '../utils/empresa-print.js';
 import { isViewMounted } from '../utils/view.js';
 
 let codpacienteActual = null;
@@ -86,7 +87,9 @@ function printEstadoCuenta() {
 
     const nombre = estadoCuenta.paciente || `Paciente #${codpacienteActual}`;
     const nombreSafe = escapeHtml(nombre);
-    const empresaSafe = escapeHtml(getSession()?.empresa || 'Clínica Dental');
+    const empresaInfo = getEmpresaPrintData(getSession()?.empresa);
+    const empresaSafe = escapeHtml(empresaInfo.nombre);
+    const contactoHtml = empresaContactHtml(empresaInfo);
     const fechaImpresion = escapeHtml(new Date().toLocaleString('es-GT'));
     const logoUrl = escapeHtml(getPrintLogoUrl());
 
@@ -159,6 +162,7 @@ function printEstadoCuenta() {
       margin: 2px 0 0;
       color: #64748b;
     }
+    ${empresaContactCss()}
     .meta {
       font-size: 8pt;
       color: #475569;
@@ -260,6 +264,7 @@ function printEstadoCuenta() {
       <h1>Estado de cuenta</h1>
       <p class="subtitle">${nombreSafe}</p>
       <p class="empresa">${empresaSafe}</p>
+      ${contactoHtml}
     </div>
   </header>
   <div class="meta">Fecha de impresión: ${fechaImpresion}</div>

@@ -2174,8 +2174,13 @@ body:has(.btn-nuevo-fab):has(.btn-print-fab) .btn-nuevo-fab {
   transition: background var(--transition);
 }
 
-.paciente-suggestion-item:hover {
+.paciente-suggestion-item:hover,
+.paciente-suggestion-item.is-active {
   background: var(--color-primary-light);
+}
+
+.paciente-suggestion-item.is-active {
+  outline: none;
 }
 
 .paciente-suggestion-nombre {
@@ -2256,6 +2261,10 @@ body:has(.btn-nuevo-fab):has(.btn-print-fab) .btn-nuevo-fab {
 }
 
 .orders-mobile {
+  display: none;
+}
+
+.pacientes-mobile {
   display: none;
 }
 
@@ -2494,3 +2503,198 @@ body:has(.btn-nuevo-fab):has(.btn-print-fab) .btn-nuevo-fab {
   font-size: 0.82rem;
   font-weight: 600;
 }
+
+.receta-items-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  background: rgba(255, 255, 255, 0.45);
+  min-height: 180px;
+}
+
+.receta-items-card h6 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+.receta-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.receta-item-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.receta-item-check input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+/* ─── Odontograma ─────────────────────────── */
+.view-odontograma .odo-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
+  padding: 0.75rem 1rem 0.25rem;
+}
+
+.odo-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.odo-legend-swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 0.25rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.odo-chart {
+  padding: 1rem 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.odo-arc-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 0.45rem;
+}
+
+.odo-arc-row {
+  display: grid;
+  grid-template-columns: 1fr 12px 1fr;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.odo-arc-mid {
+  width: 2px;
+  height: 100%;
+  min-height: 2.6rem;
+  margin: 0 auto;
+  background: linear-gradient(180deg, transparent, rgba(15, 23, 42, 0.18), transparent);
+  border-radius: 999px;
+}
+
+.odo-arc-side {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: center;
+}
+
+.odo-tooth {
+  --odo-color: #e2e8f0;
+  position: relative;
+  width: 2.55rem;
+  height: 3.15rem;
+  border: 2px solid rgba(15, 23, 42, 0.12);
+  border-radius: 0.65rem 0.65rem 0.85rem 0.85rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), transparent 42%),
+    var(--odo-color);
+  color: #0f172a;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 0.35rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.odo-tooth:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}
+
+.odo-tooth.is-selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 28%, transparent);
+}
+
+.odo-tooth.has-done {
+  outline: 1px dashed rgba(5, 150, 105, 0.45);
+}
+
+.odo-tooth-num {
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.odo-tooth-badge {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.odo-detalle {
+  margin: 0 1rem 1rem;
+  padding: 1rem 1.1rem;
+}
+
+.odo-trat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.odo-trat-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+@media (max-width: 768px) {
+  .odo-tooth {
+    width: 2.15rem;
+    height: 2.7rem;
+  }
+
+  .odo-tooth-num {
+    font-size: 0.7rem;
+  }
+
+  .odo-arc-row {
+    grid-template-columns: 1fr 8px 1fr;
+  }
+}
+

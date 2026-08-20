@@ -12,8 +12,10 @@ import { renderLogin, bindLoginEvents } from './views/login.js';
 import { renderDashboard, bindDashboard } from './views/dashboard.js';
 import { renderAgenda, bindAgenda, cleanupAgenda } from './views/agenda.js';
 import { renderPacientes, bindPacientes } from './views/pacientes.js';
+import { renderRecetas, bindRecetas } from './views/recetas.js';
 import { renderCumpleaneros, bindCumpleaneros } from './views/cumpleaneros.js';
 import { renderPacienteTratamientos, bindPacienteTratamientos } from './views/paciente-tratamientos.js';
+import { renderPacienteOdontograma, bindPacienteOdontograma } from './views/paciente-odontograma.js';
 import { renderTratamientos, bindTratamientos } from './views/tratamientos.js';
 import { renderTransacciones, bindTransacciones } from './views/transacciones.js';
 import { renderPacienteEstadoCuenta, bindPacienteEstadoCuenta } from './views/paciente-estado-cuenta.js';
@@ -33,7 +35,14 @@ const routes = {
   '/dashboard':       { title: 'Inicio',          render: renderDashboard, bind: bindDashboard },
   '/agenda':          { title: 'Agenda',          render: renderAgenda, bind: bindAgenda },
   '/pacientes':       { title: 'Pacientes',       render: renderPacientes, bind: bindPacientes },
+  '/recetas':         { title: 'Recetas',         render: renderRecetas, bind: bindRecetas },
   '/cumpleaneros':    { title: 'Cumpleañeros',    render: renderCumpleaneros, bind: bindCumpleaneros },
+  '/pacientes/:codpaciente/odontograma': {
+    title: 'Odontograma',
+    getTitle: (params) => `Odontograma — Paciente #${params.codpaciente || ''}`,
+    render: renderPacienteOdontograma,
+    bind: bindPacienteOdontograma,
+  },
   '/pacientes/:codpaciente/tratamientos': {
     title: 'Tratamientos del paciente',
     getTitle: (params) => `Tratamientos — Paciente #${params.codpaciente || ''}`,
@@ -269,6 +278,8 @@ async function handleLogin(usuario, clave) {
     tipo: data.tipo,
     usuario: data.usuario,
     empresa: data.empresa,
+    empresaDireccion: data.empresaDireccion || null,
+    empresaTelefonos: data.empresaTelefonos || null,
   });
 
   clearSessionLogo();

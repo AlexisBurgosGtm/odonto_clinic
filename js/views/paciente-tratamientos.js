@@ -1274,7 +1274,12 @@ export function renderPacienteTratamientos() {
               <i class="fa-solid fa-tooth me-2 text-primary"></i>
               Tratamientos de <span id="pacienteTratamientosNombre">...</span>
             </h5>
-            <h3 class="orders-total-monto" id="ordersTotalMonto">Q 0.00</h3>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <a class="btn btn-sm btn-outline-info btn-rounded" id="btnIrOdontograma" href="#">
+                <i class="fa-solid fa-teeth me-1"></i>Odontograma
+              </a>
+              <h3 class="orders-total-monto mb-0" id="ordersTotalMonto">Q 0.00</h3>
+            </div>
           </div>
         </div>
       </div>
@@ -1341,6 +1346,11 @@ export async function bindPacienteTratamientos(params = {}) {
   document.getElementById('btnVolverPacientes')?.addEventListener('click', () => {
     window.location.hash = '#/pacientes';
   });
+
+  const linkOdo = document.getElementById('btnIrOdontograma');
+  if (linkOdo) {
+    linkOdo.href = `#/pacientes/${codpacienteActual}/odontograma`;
+  }
 
   bindProductoSearch();
 

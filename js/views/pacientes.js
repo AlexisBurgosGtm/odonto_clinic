@@ -147,11 +147,14 @@ function pacienteDetalleHtml(paciente, proximaCita = null) {
     detalleItem(label, paciente[key], 'col-12')
   ).join('');
 
+  const tipoPaciente = (paciente.TIPO_PACIENTE || 'ADULTO') === 'NINO' ? 'Niño' : 'Adulto';
+
   return `
     <div class="swal-form text-start swal-form-wide paciente-detalle">
       <div class="row g-3">
         ${detalleItem('Nombre', paciente.NOMBRE, 'col-12')}
         ${detalleItem('Nacimiento', formatFecha(paciente.NACIMIENTO), 'col-md-4')}
+        ${detalleItem('Dentición', tipoPaciente, 'col-md-4')}
         ${detalleItem('Teléfonos', paciente.TELEFONOS, 'col-md-4')}
         ${detalleItem('Email', paciente.EMAIL, 'col-md-4')}
         ${detalleItem('Dirección', paciente.DIRECCION, 'col-12')}
@@ -223,7 +226,7 @@ export function renderPacientes() {
               <th>Dirección</th>
               <th>Teléfonos</th>
               <th>Email</th>
-              <th class="text-end" style="width: 280px;">Acciones</th>
+              <th class="text-end" style="width: 320px;">Acciones</th>
             </tr>
           </thead>
           <tbody id="pacientesTableBody">
@@ -269,6 +272,13 @@ function pacienteFormHtml() {
           <input type="date" id="swal-nacimiento" class="form-control" autocomplete="off">
         </div>
         <div class="col-md-4">
+          <label class="form-label">Dentición <span class="text-danger">*</span></label>
+          <select id="swal-tipo-paciente" class="form-select">
+            <option value="ADULTO">Adulto (1–32)</option>
+            <option value="NINO">Niño (A–T)</option>
+          </select>
+        </div>
+        <div class="col-md-4">
           <label class="form-label">Teléfonos</label>
           <input type="text" id="swal-telefonos" class="form-control" maxlength="50" autocomplete="off">
         </div>
@@ -302,6 +312,7 @@ function pacienteFormHtml() {
 function resetPacienteForm() {
   document.getElementById('swal-nombre').value = '';
   document.getElementById('swal-nacimiento').value = '';
+  document.getElementById('swal-tipo-paciente').value = 'ADULTO';
   document.getElementById('swal-direccion').value = '';
   document.getElementById('swal-telefonos').value = '';
   document.getElementById('swal-email').value = '';
@@ -317,6 +328,8 @@ function resetPacienteForm() {
 function fillPacienteForm(paciente) {
   document.getElementById('swal-nombre').value = paciente.NOMBRE || '';
   document.getElementById('swal-nacimiento').value = toInputDate(paciente.NACIMIENTO);
+  document.getElementById('swal-tipo-paciente').value =
+    (paciente.TIPO_PACIENTE || 'ADULTO') === 'NINO' ? 'NINO' : 'ADULTO';
   document.getElementById('swal-direccion').value = paciente.DIRECCION || '';
   document.getElementById('swal-telefonos').value = paciente.TELEFONOS || '';
   document.getElementById('swal-email').value = paciente.EMAIL || '';
@@ -332,16 +345,19 @@ function fillPacienteForm(paciente) {
 }
 
 function renderPacienteAcciones(p, canManage, mobile = false) {
-  const tratamientosContent = mobile && !canManage
-    ? '<i class="fa-solid fa-tooth me-1"></i>Tratamientos'
-    : '<i class="fa-solid fa-tooth"></i>';
+  const odontogramaContent = mobile && !canManage
+    ? '<i class="fa-solid fa-teeth me-1"></i>Odontograma'
+    : '<i class="fa-solid fa-teeth"></i>';
 
   return `
     <button class="btn btn-sm btn-outline-secondary btn-action" data-view="${p.CODPACIENTE}" title="Ver datos">
       <i class="fa-solid fa-eye"></i>
     </button>
-    <button class="btn btn-sm btn-outline-info btn-action${mobile && !canManage ? ' btn-action-labeled' : ''}" data-tratamientos="${p.CODPACIENTE}" title="Tratamientos">
-      ${tratamientosContent}
+    <button class="btn btn-sm btn-outline-info btn-action${mobile && !canManage ? ' btn-action-labeled' : ''}" data-odontograma="${p.CODPACIENTE}" title="Odontograma (cargar tratamientos)">
+      ${odontogramaContent}
+    </button>
+    <button class="btn btn-sm btn-outline-primary btn-action" data-tratamientos="${p.CODPACIENTE}" title="Listado de tratamientos">
+      <i class="fa-solid fa-list"></i>
     </button>
     <button class="btn btn-sm btn-outline-warning btn-action" data-estado-cuenta="${p.CODPACIENTE}" title="Estado de cuenta">
       <i class="fa-solid fa-file-invoice-dollar"></i>
@@ -359,6 +375,7 @@ function renderPacienteAcciones(p, canManage, mobile = false) {
 
 function handlePacientesListClick(e) {
   const viewBtn = e.target.closest('[data-view]');
+  const odontogramaBtn = e.target.closest('[data-odontograma]');
   const tratamientosBtn = e.target.closest('[data-tratamientos]');
   const estadoCuentaBtn = e.target.closest('[data-estado-cuenta]');
   const editBtn = e.target.closest('[data-edit]');
@@ -367,6 +384,11 @@ function handlePacientesListClick(e) {
   if (viewBtn) {
     const paciente = pacientes.find((p) => p.CODPACIENTE == viewBtn.dataset.view);
     if (paciente) openPacienteDetalle(paciente);
+    return;
+  }
+
+  if (odontogramaBtn) {
+    window.location.hash = `#/pacientes/${odontogramaBtn.dataset.odontograma}/odontograma`;
     return;
   }
 
@@ -532,6 +554,7 @@ async function openPacienteForm(mode, paciente = null) {
       const body = {
         NOMBRE,
         NACIMIENTO: nacimiento || null,
+        TIPO_PACIENTE: document.getElementById('swal-tipo-paciente')?.value || 'ADULTO',
         DIRECCION: sanitizeText(document.getElementById('swal-direccion').value, { maxLength: 500 }),
         TELEFONOS: sanitizeText(document.getElementById('swal-telefonos').value, { maxLength: 50 }),
         EMAIL: sanitizeText(document.getElementById('swal-email').value, { maxLength: 50 }),

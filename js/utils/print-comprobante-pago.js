@@ -1,5 +1,6 @@
 import { alertError } from './swal.js';
 import { getPrintLogoUrl } from './empresa-logo.js';
+import { getEmpresaPrintData, empresaContactHtml, empresaContactCss } from './empresa-print.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -50,7 +51,9 @@ function getTipoComprobante(tipo) {
 export function printComprobantePago(transaccion, { empresa } = {}) {
   try {
     const tipoInfo = getTipoComprobante(transaccion.TIPO);
-    const empresaNombre = escapeHtml(empresa?.trim() || 'Clínica Dental');
+    const empresaInfo = getEmpresaPrintData(empresa);
+    const empresaNombre = escapeHtml(empresaInfo.nombre);
+    const contactoHtml = empresaContactHtml(empresaInfo);
     const paciente = escapeHtml(transaccion.PACIENTE || `Paciente #${transaccion.CODPACIENTE || ''}`);
     const numero = escapeHtml(transaccion.ID || '—');
     const fecha = escapeHtml(formatFecha(transaccion.FECHA));
@@ -111,6 +114,7 @@ export function printComprobantePago(transaccion, { empresa } = {}) {
       margin: 0;
       color: #334155;
     }
+    ${empresaContactCss()}
     .titulo {
       text-align: center;
       font-size: 12pt;
@@ -196,6 +200,7 @@ export function printComprobantePago(transaccion, { empresa } = {}) {
       <div class="header-text">
         <h1>${tituloDocumento}</h1>
         <p class="empresa">${empresaNombre}</p>
+        ${contactoHtml}
       </div>
     </header>
 

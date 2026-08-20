@@ -3,6 +3,7 @@ import { showAlert, clearAlert } from '../utils/alerts.js';
 import { confirmAction, alertError, alertSuccess, openFormDialog } from '../utils/swal.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import { fileToHex } from '../utils/empresa-logo.js';
+import { getSession, setSession } from '../services/session.js';
 
 let empresas = [];
 let logoInput = null;
@@ -25,12 +26,14 @@ export function renderEmpresas() {
             <tr>
               <th>EMPNIT</th>
               <th>Empresa</th>
+              <th>Dirección</th>
+              <th>Teléfonos</th>
               <th style="width: 120px;">Logo</th>
               <th class="text-end" style="width: 120px;">Acciones</th>
             </tr>
           </thead>
           <tbody id="empresasTableBody">
-            <tr><td colspan="4" class="text-center text-muted py-4">Cargando...</td></tr>
+            <tr><td colspan="6" class="text-center text-muted py-4">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -46,9 +49,17 @@ function empresaFormHtml(isEdit) {
         <input type="text" id="swal-empnit" class="form-control" maxlength="50" ${isEdit ? 'readonly' : ''}>
         <div class="form-text">Identificador único de la empresa</div>
       </div>
-      <div class="mb-0">
+      <div class="mb-3">
         <label class="form-label">Nombre de la empresa</label>
         <input type="text" id="swal-empresa" class="form-control" maxlength="255">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Dirección</label>
+        <input type="text" id="swal-direccion" class="form-control" maxlength="500" placeholder="Calle, colonia, ciudad">
+      </div>
+      <div class="mb-0">
+        <label class="form-label">Teléfonos</label>
+        <input type="text" id="swal-telefonos" class="form-control" maxlength="100" placeholder="Ej. 2222-3333 / 5555-6666">
       </div>
     </div>
   `;
@@ -79,7 +90,7 @@ function renderTable() {
   if (empresas.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="4" class="text-center text-muted py-4">No hay empresas registradas</td>
+        <td colspan="6" class="text-center text-muted py-4">No hay empresas registradas</td>
       </tr>
     `;
     return;
@@ -89,6 +100,8 @@ function renderTable() {
     <tr>
       <td><span class="badge-empnit">${e.EMPNIT}</span></td>
       <td>${e.EMPRESA || '—'}</td>
+      <td>${e.DIRECCION || '—'}</td>
+      <td>${e.TELEFONOS || '—'}</td>
       <td>${renderLogoCell(e)}</td>
       <td class="text-end">
         <button class="btn btn-sm btn-outline-primary btn-action" data-edit="${e.EMPNIT}" title="Editar">
@@ -160,22 +173,28 @@ async function openEmpresaForm(mode, empresa = null) {
       if (isEdit) {
         document.getElementById('swal-empnit').value = empresa.EMPNIT || '';
         document.getElementById('swal-empresa').value = empresa.EMPRESA || '';
+        document.getElementById('swal-direccion').value = empresa.DIRECCION || '';
+        document.getElementById('swal-telefonos').value = empresa.TELEFONOS || '';
       }
     },
     preConfirm: async () => {
       const EMPNIT = sanitizeText(document.getElementById('swal-empnit').value, { maxLength: 50 });
       const EMPRESA = sanitizeText(document.getElementById('swal-empresa').value, { maxLength: 255 });
+      const DIRECCION = sanitizeText(document.getElementById('swal-direccion').value, { maxLength: 500 });
+      const TELEFONOS = sanitizeText(document.getElementById('swal-telefonos').value, { maxLength: 100 });
 
       if (!EMPNIT) {
         Swal.showValidationMessage('EMPNIT es requerido');
         return false;
       }
 
+      const body = { EMPRESA, DIRECCION, TELEFONOS };
+
       try {
         if (isEdit) {
-          await api.empresas.update(empresa.EMPNIT, { EMPRESA });
+          await api.empresas.update(empresa.EMPNIT, body);
         } else {
-          await api.empresas.create({ EMPNIT, EMPRESA });
+          await api.empresas.create({ EMPNIT, ...body });
         }
       } catch (error) {
         Swal.showValidationMessage(error.message);
@@ -187,6 +206,20 @@ async function openEmpresaForm(mode, empresa = null) {
   if (!result.isConfirmed) return;
 
   await loadEmpresas();
+
+  const sessionNow = getSession();
+  if (sessionNow) {
+    const emp = empresas.find((e) => e.EMPNIT === sessionNow.empnit);
+    if (emp) {
+      setSession({
+        ...sessionNow,
+        empresa: emp.EMPRESA,
+        empresaDireccion: emp.DIRECCION || null,
+        empresaTelefonos: emp.TELEFONOS || null,
+      });
+    }
+  }
+
   await alertSuccess(isEdit ? 'Empresa actualizada' : 'Empresa creada');
 }
 

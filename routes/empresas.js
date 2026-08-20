@@ -25,6 +25,8 @@ function logoToHex(logo) {
 const EMPRESA_LIST_FIELDS = `
   EMPNIT,
   EMPRESA,
+  DIRECCION,
+  TELEFONOS,
   CASE WHEN LOGO IS NOT NULL AND LENGTH(LOGO) > 0 THEN 1 ELSE 0 END AS TIENE_LOGO
 `;
 
@@ -78,18 +80,25 @@ router.get('/:empnit', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { EMPNIT, EMPRESA } = req.body;
+  const { EMPNIT, EMPRESA, DIRECCION, TELEFONOS } = req.body;
 
   if (!EMPNIT?.trim()) {
     return res.status(400).json({ error: 'EMPNIT es requerido' });
   }
 
+  const payload = {
+    EMPNIT: EMPNIT.trim(),
+    EMPRESA: EMPRESA?.trim() || null,
+    DIRECCION: DIRECCION?.trim() || null,
+    TELEFONOS: TELEFONOS?.trim() || null,
+  };
+
   try {
     await pool.query(
-      'INSERT INTO empresas (EMPNIT, EMPRESA) VALUES (?, ?)',
-      [EMPNIT.trim(), EMPRESA?.trim() || null]
+      'INSERT INTO empresas (EMPNIT, EMPRESA, DIRECCION, TELEFONOS) VALUES (?, ?, ?, ?)',
+      [payload.EMPNIT, payload.EMPRESA, payload.DIRECCION, payload.TELEFONOS]
     );
-    res.status(201).json({ EMPNIT: EMPNIT.trim(), EMPRESA: EMPRESA?.trim() || null, TIENE_LOGO: 0 });
+    res.status(201).json({ ...payload, TIENE_LOGO: 0 });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'Ya existe una empresa con ese EMPNIT' });
@@ -135,19 +144,25 @@ router.put('/:empnit/logo', async (req, res) => {
 });
 
 router.put('/:empnit', async (req, res) => {
-  const { EMPRESA } = req.body;
+  const { EMPRESA, DIRECCION, TELEFONOS } = req.body;
+
+  const payload = {
+    EMPRESA: EMPRESA?.trim() || null,
+    DIRECCION: DIRECCION?.trim() || null,
+    TELEFONOS: TELEFONOS?.trim() || null,
+  };
 
   try {
     const [result] = await pool.query(
-      'UPDATE empresas SET EMPRESA = ? WHERE EMPNIT = ?',
-      [EMPRESA?.trim() || null, req.params.empnit]
+      'UPDATE empresas SET EMPRESA = ?, DIRECCION = ?, TELEFONOS = ? WHERE EMPNIT = ?',
+      [payload.EMPRESA, payload.DIRECCION, payload.TELEFONOS, req.params.empnit]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Empresa no encontrada' });
     }
 
-    res.json({ EMPNIT: req.params.empnit, EMPRESA: EMPRESA?.trim() || null });
+    res.json({ EMPNIT: req.params.empnit, ...payload });
   } catch (error) {
     console.error('Error al actualizar empresa:', error.message);
     res.status(500).json({ error: 'Error al actualizar empresa' });
