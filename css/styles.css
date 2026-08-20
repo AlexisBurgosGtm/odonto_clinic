@@ -882,14 +882,16 @@ body {
 .config-option-card {
   margin-bottom: 0;
   background: rgba(255, 255, 255, 0.45);
-  height: 100%;
+  height: auto;
+  position: relative;
+  z-index: 0;
 }
 
 .config-options-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
-  align-items: stretch;
+  align-items: start;
 }
 
 .config-options-stack {
@@ -1234,6 +1236,11 @@ body {
   -webkit-backdrop-filter: blur(var(--glass-blur));
   box-shadow: var(--shadow-lg);
   padding: 1.5rem;
+  overflow: visible;
+}
+
+.swal2-container {
+  z-index: 2000 !important;
 }
 
 .swal2-title.swal-title {
@@ -1245,6 +1252,13 @@ body {
 .swal2-html-container.swal-html {
   font-size: 0.9rem;
   color: var(--color-text-muted);
+  overflow: visible;
+  pointer-events: auto;
+}
+
+.swal2-popup .paciente-suggestions,
+.swal2-popup .paciente-suggestions.open {
+  z-index: 30;
 }
 
 .swal2-actions.swal-actions {

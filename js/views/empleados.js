@@ -205,7 +205,9 @@ async function openEmpleadoForm(mode, empleado = null) {
         claveInput.value = '';
 
         [usuarioInput, claveInput].forEach((input) => {
-          input.addEventListener('focus', () => input.removeAttribute('readonly'), { once: true });
+          const unlock = () => input.removeAttribute('readonly');
+          input.addEventListener('focus', unlock, { once: true });
+          input.addEventListener('pointerdown', unlock, { once: true });
         });
 
         requestAnimationFrame(() => {

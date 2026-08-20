@@ -17,6 +17,26 @@ const SwalTheme = Swal.mixin({
 export const BTN_GUARDAR_HTML = '<i class="fa-solid fa-floppy-disk me-2"></i>Guardar';
 
 /**
+ * Tras showLoaderOnConfirm, SweetAlert a veces deja inputs/botones deshabilitados
+ * si preConfirm falla. Restaura la edición.
+ */
+function unlockSwalForm() {
+  try {
+    Swal.hideLoading();
+    Swal.enableButtons();
+  } catch (_) {
+    /* popup cerrado */
+  }
+
+  const popup = Swal.getPopup();
+  if (!popup) return;
+
+  popup.querySelectorAll('input, textarea, select').forEach((el) => {
+    el.disabled = false;
+  });
+}
+
+/**
  * Confirmación — Cancelar izquierda, Aceptar derecha
  */
 export function confirmAction({
@@ -72,6 +92,7 @@ export function openFormDialog(options) {
     focusConfirm: false,
     showLoaderOnConfirm: true,
     allowOutsideClick: () => !Swal.isLoading(),
+    allowEscapeKey: () => !Swal.isLoading(),
     ...rest,
     didOpen: () => {
       const btn = Swal.getConfirmButton();
@@ -79,7 +100,19 @@ export function openFormDialog(options) {
       userDidOpen?.();
     },
     preConfirm: userPreConfirm
-      ? async () => userPreConfirm()
+      ? async () => {
+          try {
+            const result = await userPreConfirm();
+            if (result === false) {
+              unlockSwalForm();
+              return false;
+            }
+            return result;
+          } catch (error) {
+            unlockSwalForm();
+            throw error;
+          }
+        }
       : undefined,
   });
 }
