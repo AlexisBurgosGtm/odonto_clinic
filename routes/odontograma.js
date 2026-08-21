@@ -5,6 +5,7 @@ const {
   getLayout,
   getPiezasSet,
   normalizeTipoPaciente,
+  normalizePiezaFdi,
   isEstadoValido,
 } = require('../lib/odontograma-piezas');
 
@@ -61,19 +62,20 @@ router.get('/paciente/:codpaciente', async (req, res) => {
 
     const estadoByPieza = {};
     estados.forEach((row) => {
-      estadoByPieza[String(row.PIEZA).toUpperCase()] = row;
+      const key = normalizePiezaFdi(row.PIEZA);
+      if (key) estadoByPieza[key] = row;
     });
 
     const tratamientosByPieza = {};
     tratamientos.forEach((row) => {
-      const key = String(row.PIEZA || '').toUpperCase();
+      const key = normalizePiezaFdi(row.PIEZA);
       if (!key) return;
       if (!tratamientosByPieza[key]) tratamientosByPieza[key] = [];
       tratamientosByPieza[key].push(row);
     });
 
     const chart = piezasValidas.map((pieza) => {
-      const key = String(pieza).toUpperCase();
+      const key = normalizePiezaFdi(pieza);
       const estadoRow = estadoByPieza[key];
       const trat = tratamientosByPieza[key] || [];
       return {
@@ -95,6 +97,7 @@ router.get('/paciente/:codpaciente', async (req, res) => {
         TIPO_PACIENTE: tipoPaciente,
       },
       layout,
+      nomenclatura: 'FDI',
       estadosCatalogo: ESTADOS_ODONTOGRAMA,
       chart,
     });
@@ -108,7 +111,7 @@ router.put('/paciente/:codpaciente/pieza/:pieza', async (req, res) => {
   const empnit = getEmpnit(req, res);
   if (!empnit) return;
 
-  const pieza = String(req.params.pieza || '').trim().toUpperCase();
+  const pieza = normalizePiezaFdi(req.params.pieza);
   const ESTADO = String(req.body?.ESTADO || '').trim().toUpperCase();
   const NOTA = req.body?.NOTA != null ? String(req.body.NOTA).trim() : null;
 
@@ -129,7 +132,7 @@ router.put('/paciente/:codpaciente/pieza/:pieza', async (req, res) => {
     }
 
     const tipoPaciente = normalizeTipoPaciente(pacientes[0].TIPO_PACIENTE);
-    const validas = getPiezasSet(tipoPaciente).map((p) => String(p).toUpperCase());
+    const validas = getPiezasSet(tipoPaciente).map((p) => normalizePiezaFdi(p));
     if (!validas.includes(pieza)) {
       return res.status(400).json({ error: 'La pieza no corresponde al tipo de dentición del paciente' });
     }

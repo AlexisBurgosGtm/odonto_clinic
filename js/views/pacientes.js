@@ -112,12 +112,81 @@ function getPacientesFiltrados() {
       p.TELEFONOS,
       p.EMAIL,
       formatFecha(p.NACIMIENTO),
+      tipoPacienteLabel(p.TIPO_PACIENTE),
     ]
       .filter(Boolean)
       .join(' ')
       .toLowerCase();
 
     return texto.includes(query);
+  });
+}
+
+function tipoPacienteNorm(value) {
+  return (value || 'ADULTO') === 'NINO' ? 'NINO' : 'ADULTO';
+}
+
+function tipoPacienteLabel(value) {
+  return tipoPacienteNorm(value) === 'NINO' ? 'Niño' : 'Adulto';
+}
+
+function tipoPacienteBadgeListHtml(value) {
+  const esNino = tipoPacienteNorm(value) === 'NINO';
+  return `
+    <span class="badge-denticion ${esNino ? 'badge-denticion-nino' : 'badge-denticion-adulto'}">
+      <i class="fa-solid ${esNino ? 'fa-child' : 'fa-user'}"></i>
+      ${esNino ? 'Niño' : 'Adulto'}
+    </span>
+  `;
+}
+
+function denticionBadgeHtml(tipo = 'ADULTO') {
+  const esNino = tipoPacienteNorm(tipo) === 'NINO';
+  return `
+    <button
+      type="button"
+      id="swal-denticion-badge"
+      class="denticion-badge ${esNino ? 'denticion-badge-nino' : 'denticion-badge-adulto'}"
+      title="Clic para cambiar dentición"
+      aria-label="Cambiar dentición"
+    >
+      <i class="fa-solid ${esNino ? 'fa-child' : 'fa-user'}"></i>
+      <span>${esNino ? 'Niño' : 'Adulto'}</span>
+    </button>
+  `;
+}
+
+function updateDenticionBadge(tipo) {
+  const badge = document.getElementById('swal-denticion-badge');
+  if (!badge) return;
+
+  const esNino = tipoPacienteNorm(tipo) === 'NINO';
+  badge.classList.toggle('denticion-badge-nino', esNino);
+  badge.classList.toggle('denticion-badge-adulto', !esNino);
+  badge.innerHTML = `
+    <i class="fa-solid ${esNino ? 'fa-child' : 'fa-user'}"></i>
+    <span>${esNino ? 'Niño' : 'Adulto'}</span>
+  `;
+}
+
+function setDenticionTipo(tipo) {
+  const normalized = tipoPacienteNorm(tipo);
+  const select = document.getElementById('swal-tipo-paciente');
+  if (select) select.value = normalized;
+  updateDenticionBadge(normalized);
+}
+
+function bindDenticionControls(root = document) {
+  const select = root.querySelector('#swal-tipo-paciente') || document.getElementById('swal-tipo-paciente');
+  const badge = root.querySelector('#swal-denticion-badge') || document.getElementById('swal-denticion-badge');
+
+  select?.addEventListener('change', () => {
+    updateDenticionBadge(select.value);
+  });
+
+  badge?.addEventListener('click', () => {
+    const actual = tipoPacienteNorm(select?.value);
+    setDenticionTipo(actual === 'NINO' ? 'ADULTO' : 'NINO');
   });
 }
 
@@ -147,14 +216,14 @@ function pacienteDetalleHtml(paciente, proximaCita = null) {
     detalleItem(label, paciente[key], 'col-12')
   ).join('');
 
-  const tipoPaciente = (paciente.TIPO_PACIENTE || 'ADULTO') === 'NINO' ? 'Niño' : 'Adulto';
+  const tipoPaciente = tipoPacienteLabel(paciente.TIPO_PACIENTE);
 
   return `
     <div class="swal-form text-start swal-form-wide paciente-detalle">
       <div class="row g-3">
         ${detalleItem('Nombre', paciente.NOMBRE, 'col-12')}
         ${detalleItem('Nacimiento', formatFecha(paciente.NACIMIENTO), 'col-md-4')}
-        ${detalleItem('Dentición', tipoPaciente, 'col-md-4')}
+        ${detalleItem('Dentición', tipoPacienteBadgeListHtml(paciente.TIPO_PACIENTE), 'col-md-4')}
         ${detalleItem('Teléfonos', paciente.TELEFONOS, 'col-md-4')}
         ${detalleItem('Email', paciente.EMAIL, 'col-md-4')}
         ${detalleItem('Dirección', paciente.DIRECCION, 'col-12')}
@@ -211,7 +280,7 @@ export function renderPacientes() {
             type="search"
             id="pacientesSearch"
             class="form-control"
-            placeholder="Buscar por nombre, teléfono, email, dirección..."
+            placeholder="Buscar por nombre, teléfono, dentición, dirección..."
             autocomplete="off"
           >
         </div>
@@ -223,9 +292,9 @@ export function renderPacientes() {
             <tr>
               <th>Nombre</th>
               <th>Nacimiento</th>
+              <th>Dentición</th>
               <th>Dirección</th>
               <th>Teléfonos</th>
-              <th>Email</th>
               <th class="text-end" style="width: 320px;">Acciones</th>
             </tr>
           </thead>
@@ -273,10 +342,13 @@ function pacienteFormHtml() {
         </div>
         <div class="col-md-4">
           <label class="form-label">Dentición <span class="text-danger">*</span></label>
-          <select id="swal-tipo-paciente" class="form-select">
-            <option value="ADULTO">Adulto (1–32)</option>
-            <option value="NINO">Niño (A–T)</option>
-          </select>
+          <div class="denticion-field">
+            <select id="swal-tipo-paciente" class="form-select">
+              <option value="ADULTO">Adulto (FDI 1.1–4.8)</option>
+              <option value="NINO">Niño (FDI 5.1–8.5)</option>
+            </select>
+            ${denticionBadgeHtml('ADULTO')}
+          </div>
         </div>
         <div class="col-md-4">
           <label class="form-label">Teléfonos</label>
@@ -312,7 +384,7 @@ function pacienteFormHtml() {
 function resetPacienteForm() {
   document.getElementById('swal-nombre').value = '';
   document.getElementById('swal-nacimiento').value = '';
-  document.getElementById('swal-tipo-paciente').value = 'ADULTO';
+  setDenticionTipo('ADULTO');
   document.getElementById('swal-direccion').value = '';
   document.getElementById('swal-telefonos').value = '';
   document.getElementById('swal-email').value = '';
@@ -328,8 +400,7 @@ function resetPacienteForm() {
 function fillPacienteForm(paciente) {
   document.getElementById('swal-nombre').value = paciente.NOMBRE || '';
   document.getElementById('swal-nacimiento').value = toInputDate(paciente.NACIMIENTO);
-  document.getElementById('swal-tipo-paciente').value =
-    (paciente.TIPO_PACIENTE || 'ADULTO') === 'NINO' ? 'NINO' : 'ADULTO';
+  setDenticionTipo(paciente.TIPO_PACIENTE);
   document.getElementById('swal-direccion').value = paciente.DIRECCION || '';
   document.getElementById('swal-telefonos').value = paciente.TELEFONOS || '';
   document.getElementById('swal-email').value = paciente.EMAIL || '';
@@ -451,9 +522,9 @@ function renderTable() {
     <tr>
       <td>${p.NOMBRE || '—'}</td>
       <td>${formatFecha(p.NACIMIENTO)}</td>
+      <td>${tipoPacienteBadgeListHtml(p.TIPO_PACIENTE)}</td>
       <td>${p.DIRECCION || '—'}</td>
       <td>${p.TELEFONOS || '—'}</td>
-      <td>${p.EMAIL || '—'}</td>
       <td class="text-end">
         ${renderPacienteAcciones(p, canManage)}
       </td>
@@ -466,6 +537,7 @@ function renderTable() {
         <div class="paciente-mobile-main">
           <h6 class="paciente-mobile-nombre">${p.NOMBRE || '—'}</h6>
           <p class="paciente-mobile-meta">
+            ${tipoPacienteBadgeListHtml(p.TIPO_PACIENTE)}
             <span><i class="fa-solid fa-cake-candles me-1"></i>${formatFecha(p.NACIMIENTO)}</span>
             ${p.TELEFONOS ? `<span><i class="fa-solid fa-phone me-1"></i>${p.TELEFONOS}</span>` : ''}
           </p>
@@ -536,6 +608,7 @@ async function openPacienteForm(mode, paciente = null) {
     width: '960px',
     didOpen: () => {
       bindSiNoBadges(Swal.getHtmlContainer());
+      bindDenticionControls(Swal.getHtmlContainer());
       if (isEdit) {
         fillPacienteForm(paciente);
       } else {

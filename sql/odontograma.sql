@@ -1,4 +1,4 @@
--- Odontograma: dentición del paciente + estados por pieza
+-- Odontograma FDI: dentición del paciente + estados por pieza
 -- También se aplica automáticamente al iniciar el servidor (lib/ensure-odontograma.js)
 
 -- Si la columna ya existe, ignore el error de duplicado:
@@ -16,3 +16,5 @@ CREATE TABLE IF NOT EXISTS odontograma (
   UNIQUE KEY uk_odontograma_pieza (EMPNIT, CODPACIENTE, PIEZA),
   INDEX idx_odontograma_paciente (EMPNIT, CODPACIENTE)
 );
+
+-- Piezas FDI adulto 1.1–4.8 y niño 5.1–8.5 (se insertan al arrancar el servidor)

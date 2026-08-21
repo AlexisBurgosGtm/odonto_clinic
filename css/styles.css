@@ -1108,6 +1108,82 @@ body {
 .badge-tipo-abono { background: #d1fae5; color: #059669; }
 .badge-tipo-pago { background: #fee2e2; color: #dc2626; }
 
+.badge-denticion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.badge-denticion-adulto {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.badge-denticion-nino {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.denticion-field {
+  display: flex;
+  align-items: stretch;
+  gap: 0.55rem;
+}
+
+.denticion-field .form-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.denticion-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-width: 4.5rem;
+  padding: 0.35rem 0.55rem;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.1;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.denticion-badge i {
+  font-size: 1.05rem;
+}
+
+.denticion-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+.denticion-badge-adulto {
+  background: linear-gradient(160deg, #e0f2fe, #bae6fd);
+  color: #0369a1;
+  border-color: #7dd3fc;
+  border-radius: 14px 14px 10px 10px;
+}
+
+.denticion-badge-nino {
+  background: linear-gradient(160deg, #fef9c3, #fde68a);
+  color: #b45309;
+  border-color: #fcd34d;
+  border-radius: 50% / 40%;
+  min-width: 4.75rem;
+  padding: 0.45rem 0.6rem;
+}
+
 .text-abono { color: #059669; }
 .text-pago { color: #dc2626; }
 
@@ -2686,9 +2762,10 @@ body:has(.btn-nuevo-fab):has(.btn-print-fab) .btn-nuevo-fab {
 }
 
 .odo-tooth-num {
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   font-weight: 700;
   line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 .odo-tooth-badge {
@@ -2735,12 +2812,12 @@ body:has(.btn-nuevo-fab):has(.btn-print-fab) .btn-nuevo-fab {
 
 @media (max-width: 768px) {
   .odo-tooth {
-    width: 2.15rem;
+    width: 2.25rem;
     height: 2.7rem;
   }
 
   .odo-tooth-num {
-    font-size: 0.7rem;
+    font-size: 0.62rem;
   }
 
   .odo-arc-row {
