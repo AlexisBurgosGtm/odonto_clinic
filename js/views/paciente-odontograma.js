@@ -377,7 +377,7 @@ export function renderPacienteOdontograma() {
             </div>
           </div>
           <p class="text-muted small mb-0 mt-2">
-            Nomenclatura FDI. Adulto: 1.1–4.8 · Niño: 5.1–8.5. Seleccione una pieza para cargar tratamientos o marcar su estado clínico.
+            Adulto: Universal 1–32 · Niño: FDI 5.1–8.5. Seleccione una pieza para cargar tratamientos o marcar su estado clínico.
           </p>
         </div>
       </div>

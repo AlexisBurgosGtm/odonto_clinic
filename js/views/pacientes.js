@@ -344,8 +344,8 @@ function pacienteFormHtml() {
           <label class="form-label">Dentición <span class="text-danger">*</span></label>
           <div class="denticion-field">
             <select id="swal-tipo-paciente" class="form-select">
-              <option value="ADULTO">Adulto (FDI 1.1–4.8)</option>
-              <option value="NINO">Niño (FDI 5.1–8.5)</option>
+            <option value="ADULTO">Adulto (1–32)</option>
+            <option value="NINO">Niño (FDI 5.1–8.5)</option>
             </select>
             ${denticionBadgeHtml('ADULTO')}
           </div>
