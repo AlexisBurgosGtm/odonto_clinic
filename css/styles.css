@@ -2554,6 +2554,17 @@ body:has(.btn-nuevo-fab):has(.btn-print-fab) .btn-nuevo-fab {
   flex-shrink: 0;
 }
 
+.receta-item-desc {
+  white-space: pre-line;
+  line-height: 1.35;
+}
+
+.config-receta-desc {
+  white-space: pre-line;
+  line-height: 1.35;
+  max-width: 28rem;
+}
+
 /* ─── Odontograma ─────────────────────────── */
 .view-odontograma .odo-legend {
   display: flex;

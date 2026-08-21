@@ -37,7 +37,10 @@ function listHtml(items, emptyText) {
   if (!items.length) {
     return `<p class="empty">${escapeHtml(emptyText)}</p>`;
   }
-  return `<ul>${items.map((item) => `<li>${escapeHtml(item.descripcion || '—')}</li>`).join('')}</ul>`;
+  return `<ul>${items.map((item) => {
+    const texto = escapeHtml(item.descripcion || '—').replace(/\n/g, '<br>');
+    return `<li>${texto}</li>`;
+  }).join('')}</ul>`;
 }
 
 export function printReceta(receta, { empresa, piePagina } = {}) {
@@ -110,7 +113,7 @@ export function printReceta(receta, { empresa, piePagina } = {}) {
     section { margin-bottom: 16px; }
     section.seccion-medicamentos { margin-bottom: 36px; }
     ul { margin: 0; padding-left: 1.2rem; }
-    li { margin-bottom: 0.35rem; }
+    li { margin-bottom: 0.55rem; line-height: 1.4; white-space: pre-line; }
     .empty { color: #777; font-style: italic; margin: 0; }
     .pie-receta {
       margin-top: 48px;

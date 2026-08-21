@@ -188,7 +188,14 @@ function recetaFormHtml(item = null) {
       </div>
       <div class="mb-0">
         <label class="form-label">Descripción <span class="text-danger">*</span></label>
-        <input type="text" id="swal-receta-descripcion" class="form-control" maxlength="500" value="${escapeHtml(item?.DESCRIPCION || '')}" placeholder="Ej. Amoxicilina 500 mg cada 8 horas">
+        <textarea
+          id="swal-receta-descripcion"
+          class="form-control"
+          rows="4"
+          maxlength="500"
+          placeholder="Puede usar varias líneas. Ej.&#10;Amoxicilina 500 mg&#10;1 cápsula cada 8 horas por 7 días"
+        >${escapeHtml(item?.DESCRIPCION || '')}</textarea>
+        <div class="form-text">Máximo 500 caracteres. Se respetan los saltos de línea al imprimir.</div>
       </div>
     </div>
   `;
@@ -247,7 +254,7 @@ function renderRecetasTable() {
     <tr>
       <td>${escapeHtml(r.CATEGORIA || '—')}</td>
       <td>${escapeHtml(r.TIPO || '—')}</td>
-      <td>${escapeHtml(r.DESCRIPCION || '—')}</td>
+      <td class="config-receta-desc">${escapeHtml(r.DESCRIPCION || '—')}</td>
       <td class="text-end">
         <button class="btn btn-sm btn-outline-primary btn-action" data-edit-receta="${r.ID}" title="Editar">
           <i class="fa-solid fa-pen"></i>

@@ -172,7 +172,7 @@ function renderItemsChecklist(containerId, items, selectedIds = []) {
   container.innerHTML = items.map((item) => `
     <label class="receta-item-check">
       <input type="checkbox" value="${item.ID}" ${selected.has(String(item.ID)) ? 'checked' : ''}>
-      <span>${escapeHtml(item.DESCRIPCION || '—')}</span>
+      <span class="receta-item-desc">${escapeHtml(item.DESCRIPCION || '—')}</span>
     </label>
   `).join('');
 }
