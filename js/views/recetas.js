@@ -6,6 +6,7 @@ import { isViewMounted } from '../utils/view.js';
 import { mountNuevoFab } from '../utils/nuevo-fab.js';
 import { localDateString } from '../utils/datetime.js';
 import { printReceta } from '../utils/print-receta.js';
+import { sanitizeText } from '../utils/sanitize.js';
 
 const RECETA_CATEGORIAS = ['CIRUGIA QUIRUGICA', 'EXODONCIA', 'ENDODONCIA', 'OTROS'];
 
@@ -159,7 +160,16 @@ function itemsByCategoriaTipo(categoria, tipo) {
   });
 }
 
-function renderItemsChecklist(containerId, items, selectedIds = []) {
+function textosDesdeDetalle(itemsGuardados) {
+  const map = {};
+  (itemsGuardados || []).forEach((item) => {
+    if (item?.id == null) return;
+    map[String(item.id)] = item.descripcion || '';
+  });
+  return map;
+}
+
+function renderItemsChecklist(containerId, items, selectedIds = [], textos = {}) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
@@ -169,12 +179,28 @@ function renderItemsChecklist(containerId, items, selectedIds = []) {
   }
 
   const selected = new Set(selectedIds.map(String));
-  container.innerHTML = items.map((item) => `
-    <label class="receta-item-check">
-      <input type="checkbox" value="${item.ID}" ${selected.has(String(item.ID)) ? 'checked' : ''}>
-      <span class="receta-item-desc">${escapeHtml(item.DESCRIPCION || '—')}</span>
-    </label>
-  `).join('');
+  container.innerHTML = items.map((item) => {
+    const id = String(item.ID);
+    const texto = textos[id] != null && textos[id] !== ''
+      ? textos[id]
+      : (item.DESCRIPCION || '');
+    const checked = selected.has(id) ? 'checked' : '';
+
+    return `
+      <div class="receta-item-row">
+        <label class="receta-item-toggle" title="Incluir en la receta">
+          <input type="checkbox" value="${escapeHtml(id)}" ${checked}>
+        </label>
+        <textarea
+          class="form-control form-control-sm receta-item-text"
+          rows="2"
+          maxlength="500"
+          data-config-id="${escapeHtml(id)}"
+          placeholder="Texto del ítem..."
+        >${escapeHtml(texto)}</textarea>
+      </div>
+    `;
+  }).join('');
 }
 
 function refreshCategoriaItems(selectedDetalle = null) {
@@ -188,7 +214,7 @@ function refreshCategoriaItems(selectedDetalle = null) {
     return;
   }
 
-  // Al editar: respetar selección guardada. Al crear/cambiar categoría: marcar todos.
+  // Al editar: respetar selección y textos guardados. Al crear/cambiar categoría: marcar todos.
   if (selectedDetalle) {
     const data = parseDetalle(selectedDetalle);
     const selectedMeds = (data.medicamentos || []).map((i) => i.id).filter((id) => id != null);
@@ -201,8 +227,8 @@ function refreshCategoriaItems(selectedDetalle = null) {
       ? selectedInds
       : inds.filter((m) => (data.indicaciones || []).some((s) => s.descripcion === m.DESCRIPCION)).map((m) => m.ID);
 
-    renderItemsChecklist('recetaMedicamentosList', meds, medIds);
-    renderItemsChecklist('recetaIndicacionesList', inds, indIds);
+    renderItemsChecklist('recetaMedicamentosList', meds, medIds, textosDesdeDetalle(data.medicamentos));
+    renderItemsChecklist('recetaIndicacionesList', inds, indIds, textosDesdeDetalle(data.indicaciones));
     return;
   }
 
@@ -214,15 +240,16 @@ function collectSelectedItems(containerId, tipo) {
   const container = document.getElementById(containerId);
   if (!container) return [];
 
-  return [...container.querySelectorAll('input[type="checkbox"]:checked')].map((input) => {
-    const id = Number(input.value);
-    const cfg = configRecetas.find((c) => c.ID == id);
-    return {
-      id,
-      tipo,
-      descripcion: cfg?.DESCRIPCION || input.parentElement?.querySelector('span')?.textContent?.trim() || '',
-    };
-  }).filter((item) => item.descripcion);
+  return [...container.querySelectorAll('.receta-item-row')]
+    .filter((row) => row.querySelector('input[type="checkbox"]')?.checked)
+    .map((row) => {
+      const input = row.querySelector('input[type="checkbox"]');
+      const textarea = row.querySelector('.receta-item-text');
+      const id = Number(input?.value);
+      const descripcion = sanitizeText(textarea?.value, { maxLength: 500 });
+      return { id, tipo, descripcion };
+    })
+    .filter((item) => item.descripcion);
 }
 
 function resetForm() {

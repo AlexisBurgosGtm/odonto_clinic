@@ -70,8 +70,8 @@ export function printReceta(receta, { empresa, piePagina } = {}) {
     @page { size: letter; margin: 16mm; }
     * { box-sizing: border-box; }
     body {
-      font-family: "Times New Roman", Times, serif;
-      font-size: 11pt;
+      font-family: Tahoma, Geneva, sans-serif;
+      font-size: 10.5pt;
       color: #1a1a1a;
       margin: 0;
     }
@@ -84,8 +84,8 @@ export function printReceta(receta, { empresa, piePagina } = {}) {
       margin-bottom: 16px;
     }
     .logo { width: 72px; height: 72px; object-fit: contain; }
-    h1 { font-size: 18pt; margin: 0 0 4px; }
-    .muted { color: #555; font-size: 10pt; }
+    h1 { font-size: 17pt; margin: 0 0 4px; }
+    .muted { color: #555; font-size: 9.5pt; }
     ${empresaContactCss()}
     .meta {
       display: grid;
@@ -99,27 +99,37 @@ export function printReceta(receta, { empresa, piePagina } = {}) {
     }
     .box h3 {
       margin: 0 0 6px;
-      font-size: 10pt;
+      font-size: 9.5pt;
       text-transform: uppercase;
       color: #555;
     }
-    h2 {
-      font-size: 12pt;
-      margin: 0 0 8px;
+    .detalle-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 8px;
+      align-items: start;
+    }
+    .detalle-col {
+      border: 1px solid #cbd5e1;
+      padding: 12px 14px;
+      min-height: 120px;
+    }
+    .detalle-col h2 {
+      font-size: 11.5pt;
+      margin: 0 0 10px;
       color: #0c4a6e;
       border-bottom: 1px solid #cbd5e1;
       padding-bottom: 4px;
     }
-    section { margin-bottom: 16px; }
-    section.seccion-medicamentos { margin-bottom: 36px; }
-    ul { margin: 0; padding-left: 1.2rem; }
+    ul { margin: 0; padding-left: 1.15rem; }
     li { margin-bottom: 0.55rem; line-height: 1.4; white-space: pre-line; }
-    .empty { color: #777; font-style: italic; margin: 0; }
+    .empty { color: #777; font-style: italic; margin: 0; font-size: 9.5pt; }
     .pie-receta {
       margin-top: 48px;
       padding-top: 14px;
       border-top: 1px solid #cbd5e1;
-      font-size: 9.5pt;
+      font-size: 9pt;
       color: #334155;
       line-height: 1.45;
       text-align: center;
@@ -127,9 +137,12 @@ export function printReceta(receta, { empresa, piePagina } = {}) {
     }
     .foot {
       margin-top: 16px;
-      font-size: 8.5pt;
+      font-size: 8pt;
       color: #666;
       text-align: center;
+    }
+    @media print {
+      .detalle-col { break-inside: avoid; }
     }
   </style>
 </head>
@@ -156,15 +169,16 @@ export function printReceta(receta, { empresa, piePagina } = {}) {
     </div>
   </div>
 
-  <section class="seccion-medicamentos">
-    <h2>Medicamentos</h2>
-    ${listHtml(detalle.medicamentos, 'Sin medicamentos')}
-  </section>
-
-  <section>
-    <h2>Indicaciones</h2>
-    ${listHtml(detalle.indicaciones, 'Sin indicaciones')}
-  </section>
+  <div class="detalle-grid">
+    <div class="detalle-col">
+      <h2>Medicamentos</h2>
+      ${listHtml(detalle.medicamentos, 'Sin medicamentos')}
+    </div>
+    <div class="detalle-col">
+      <h2>Indicaciones</h2>
+      ${listHtml(detalle.indicaciones, 'Sin indicaciones')}
+    </div>
+  </div>
 
   ${pieHtml}
   <div class="foot">Impreso: ${fechaImpresion}</div>
