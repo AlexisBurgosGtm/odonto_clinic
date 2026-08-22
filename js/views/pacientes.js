@@ -295,7 +295,7 @@ export function renderPacientes() {
               <th>Dentición</th>
               <th>Dirección</th>
               <th>Teléfonos</th>
-              <th class="text-end" style="width: 320px;">Acciones</th>
+              <th class="text-end" style="width: 260px;">Acciones</th>
             </tr>
           </thead>
           <tbody id="pacientesTableBody">
@@ -416,22 +416,9 @@ function fillPacienteForm(paciente) {
 }
 
 function renderPacienteAcciones(p, canManage, mobile = false) {
-  const odontogramaContent = mobile && !canManage
-    ? '<i class="fa-solid fa-teeth me-1"></i>Odontograma'
-    : '<i class="fa-solid fa-teeth"></i>';
-
   return `
-    <button class="btn btn-sm btn-outline-secondary btn-action" data-view="${p.CODPACIENTE}" title="Ver datos">
-      <i class="fa-solid fa-eye"></i>
-    </button>
-    <button class="btn btn-sm btn-outline-info btn-action${mobile && !canManage ? ' btn-action-labeled' : ''}" data-odontograma="${p.CODPACIENTE}" title="Odontograma (cargar tratamientos)">
-      ${odontogramaContent}
-    </button>
-    <button class="btn btn-sm btn-outline-primary btn-action" data-tratamientos="${p.CODPACIENTE}" title="Listado de tratamientos">
-      <i class="fa-solid fa-list"></i>
-    </button>
-    <button class="btn btn-sm btn-outline-warning btn-action" data-estado-cuenta="${p.CODPACIENTE}" title="Estado de cuenta">
-      <i class="fa-solid fa-file-invoice-dollar"></i>
+    <button class="btn btn-sm btn-outline-info btn-action btn-action-labeled" data-detalle="${p.CODPACIENTE}" title="Ver detalles">
+      <i class="fa-solid fa-folder-open me-1"></i>Ver Detalles
     </button>
     ${canManage ? `
     <button class="btn btn-sm btn-outline-primary btn-action" data-edit="${p.CODPACIENTE}" title="Editar">
@@ -445,31 +432,12 @@ function renderPacienteAcciones(p, canManage, mobile = false) {
 }
 
 function handlePacientesListClick(e) {
-  const viewBtn = e.target.closest('[data-view]');
-  const odontogramaBtn = e.target.closest('[data-odontograma]');
-  const tratamientosBtn = e.target.closest('[data-tratamientos]');
-  const estadoCuentaBtn = e.target.closest('[data-estado-cuenta]');
+  const detalleBtn = e.target.closest('[data-detalle]');
   const editBtn = e.target.closest('[data-edit]');
   const deleteBtn = e.target.closest('[data-delete]');
 
-  if (viewBtn) {
-    const paciente = pacientes.find((p) => p.CODPACIENTE == viewBtn.dataset.view);
-    if (paciente) openPacienteDetalle(paciente);
-    return;
-  }
-
-  if (odontogramaBtn) {
-    window.location.hash = `#/pacientes/${odontogramaBtn.dataset.odontograma}/odontograma`;
-    return;
-  }
-
-  if (tratamientosBtn) {
-    window.location.hash = `#/pacientes/${tratamientosBtn.dataset.tratamientos}/tratamientos`;
-    return;
-  }
-
-  if (estadoCuentaBtn) {
-    window.location.hash = `#/pacientes/${estadoCuentaBtn.dataset.estadoCuenta}/estado-cuenta`;
+  if (detalleBtn) {
+    window.location.hash = `#/pacientes/${detalleBtn.dataset.detalle}/detalle`;
     return;
   }
 
@@ -588,13 +556,7 @@ export async function showPacienteDetalle(paciente) {
 
 export async function showPacienteDetalleByCod(codpaciente) {
   if (!codpaciente) return;
-
-  try {
-    const paciente = await api.pacientes.get(codpaciente);
-    await showPacienteDetalle(paciente);
-  } catch (error) {
-    await alertError(error.message);
-  }
+  window.location.hash = `#/pacientes/${codpaciente}/detalle`;
 }
 
 async function openPacienteForm(mode, paciente = null) {

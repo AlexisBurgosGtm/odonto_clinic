@@ -16,6 +16,7 @@ import { renderRecetas, bindRecetas } from './views/recetas.js';
 import { renderCumpleaneros, bindCumpleaneros } from './views/cumpleaneros.js';
 import { renderPacienteTratamientos, bindPacienteTratamientos } from './views/paciente-tratamientos.js';
 import { renderPacienteOdontograma, bindPacienteOdontograma } from './views/paciente-odontograma.js';
+import { renderPacienteDetalle, bindPacienteDetalle } from './views/paciente-detalle.js';
 import { renderTratamientos, bindTratamientos } from './views/tratamientos.js';
 import { renderTransacciones, bindTransacciones } from './views/transacciones.js';
 import { renderPacienteEstadoCuenta, bindPacienteEstadoCuenta } from './views/paciente-estado-cuenta.js';
@@ -37,6 +38,12 @@ const routes = {
   '/pacientes':       { title: 'Pacientes',       render: renderPacientes, bind: bindPacientes },
   '/recetas':         { title: 'Recetas',         render: renderRecetas, bind: bindRecetas },
   '/cumpleaneros':    { title: 'Cumpleañeros',    render: renderCumpleaneros, bind: bindCumpleaneros },
+  '/pacientes/:codpaciente/detalle': {
+    title: 'Detalle del paciente',
+    getTitle: (params) => `Paciente #${params.codpaciente || ''}`,
+    render: renderPacienteDetalle,
+    bind: bindPacienteDetalle,
+  },
   '/pacientes/:codpaciente/odontograma': {
     title: 'Odontograma',
     getTitle: (params) => `Odontograma — Paciente #${params.codpaciente || ''}`,
@@ -110,8 +117,9 @@ function renderLayout() {
 
     <div class="main-content">
       <header class="topbar">
-        <button class="btn-menu-toggle" id="btnMenuToggle" aria-label="Abrir menú">
+        <button class="btn-menu-toggle" id="btnMenuToggle" type="button" aria-label="Abrir menú" title="Menú">
           <i class="fa-solid fa-bars"></i>
+          <span class="btn-menu-toggle-text">Menú</span>
         </button>
         <span class="topbar-title" id="topbarTitle">${defaultTitle}</span>
         <div class="topbar-user">
@@ -142,6 +150,11 @@ function renderLayout() {
 }
 
 /* ─── Eventos del layout ───────────────────── */
+function closeSidebar() {
+  document.getElementById('sidebar')?.classList.remove('open');
+  document.getElementById('sidebarOverlay')?.classList.remove('active');
+}
+
 function toggleSidebar() {
   document.getElementById('sidebar')?.classList.toggle('open');
   document.getElementById('sidebarOverlay')?.classList.toggle('active');
@@ -152,19 +165,29 @@ function bindLayoutEvents() {
   const overlay = document.getElementById('sidebarOverlay');
   const btnLogout = document.getElementById('btnLogout');
 
-  document.getElementById('btnMenuToggle')?.addEventListener('click', toggleSidebar);
-  document.getElementById('btnMenuFab')?.addEventListener('click', toggleSidebar);
-
-  overlay?.addEventListener('click', () => {
-    sidebar.classList.remove('open');
-    overlay.classList.remove('active');
+  document.getElementById('btnMenuToggle')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleSidebar();
+  });
+  document.getElementById('btnMenuFab')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleSidebar();
   });
 
-  document.getElementById('sidebarNav')?.addEventListener('click', () => {
-    if (window.innerWidth < 992) {
-      sidebar.classList.remove('open');
-      overlay.classList.remove('active');
+  overlay?.addEventListener('click', closeSidebar);
+
+  document.getElementById('sidebarNav')?.addEventListener('click', (e) => {
+    if (e.target.closest('a.nav-card')) {
+      closeSidebar();
     }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!sidebar?.classList.contains('open')) return;
+    if (e.target.closest('#sidebar')) return;
+    if (e.target.closest('#btnMenuToggle')) return;
+    if (e.target.closest('#btnMenuFab')) return;
+    closeSidebar();
   });
 
   btnLogout?.addEventListener('click', () => {

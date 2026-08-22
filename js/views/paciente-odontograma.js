@@ -146,19 +146,19 @@ function renderDetallePieza(pieza) {
     : '<p class="text-muted small mb-0">Sin tratamientos en esta pieza.</p>';
 
   panel.innerHTML = `
-    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-3">
-      <div>
+    <div class="odo-detalle-head mb-3">
+      <div class="odo-detalle-title">
         <h6 class="mb-1">Pieza ${escapeHtml(pieza)}</h6>
         <div class="text-muted small">Estado: <strong>${escapeHtml(info.ESTADO || 'SANO')}</strong></div>
         ${info.NOTA ? `<div class="small mt-1">${escapeHtml(info.NOTA)}</div>` : ''}
       </div>
-      <div class="d-flex gap-2">
+      <div class="odo-detalle-actions">
         <button type="button" class="btn btn-sm btn-outline-secondary btn-rounded" id="btnOdoEstado">
           <i class="fa-solid fa-palette me-1"></i>Estado
         </button>
         ${canAdd ? `
           <button type="button" class="btn btn-sm btn-nuevo btn-rounded" id="btnOdoTratamiento">
-            <i class="fa-solid fa-plus me-1"></i>Tratamiento
+            <i class="fa-solid fa-plus me-1"></i>Agregar tratamiento
           </button>
         ` : ''}
       </div>
@@ -240,40 +240,29 @@ async function openAddTratamiento(pieza) {
     return;
   }
 
-  let productoSeleccionado = null;
+  let agregado = false;
 
-  const result = await openFormDialog({
-    title: `Tratamiento · Pieza ${pieza}`,
-    width: '520px',
+  await openFormDialog({
+    title: `Agregar tratamiento · Pieza ${pieza}`,
+    width: '480px',
+    showConfirmButton: false,
+    showCancelButton: false,
+    showCloseButton: true,
     html: `
       <div class="swal-form text-start">
-        <div class="mb-3">
-          <label class="form-label">Pieza</label>
-          <input type="text" class="form-control" value="${escapeHtml(pieza)}" readonly>
+        <p class="text-muted small mb-3">Pieza <strong>${escapeHtml(pieza)}</strong> ya seleccionada. Busque y elija el tratamiento.</p>
+        <label class="form-label">Buscar tratamiento</label>
+        <div class="paciente-autocomplete">
+          <input type="search" id="swal-odo-prod-buscar" class="form-control" placeholder="Mín. 2 caracteres..." autocomplete="off">
+          <ul class="paciente-suggestions" id="swal-odo-prod-suggestions"></ul>
         </div>
-        <div class="mb-3">
-          <label class="form-label">Buscar tratamiento <span class="text-danger">*</span></label>
-          <div class="paciente-autocomplete">
-            <input type="search" id="swal-odo-prod-buscar" class="form-control" placeholder="Mín. 2 caracteres..." autocomplete="off">
-            <input type="hidden" id="swal-odo-prod-id">
-            <ul class="paciente-suggestions" id="swal-odo-prod-suggestions"></ul>
-          </div>
-          <div class="form-text" id="swal-odo-prod-label">Seleccione un tratamiento del catálogo</div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Precio <span class="text-danger">*</span></label>
-          <input type="number" id="swal-odo-precio" class="form-control" min="0" step="0.01">
-        </div>
-        <div class="mb-0">
-          <label class="form-label">Observaciones</label>
-          <textarea id="swal-odo-obs" class="form-control" rows="2" maxlength="500"></textarea>
-        </div>
+        <div class="text-danger small mt-2" id="swal-odo-prod-error" hidden></div>
       </div>
     `,
     didOpen: () => {
       const input = document.getElementById('swal-odo-prod-buscar');
       const list = document.getElementById('swal-odo-prod-suggestions');
-      const label = document.getElementById('swal-odo-prod-label');
+      const errEl = document.getElementById('swal-odo-prod-error');
 
       const hide = () => list?.classList.remove('open');
       const render = (items) => {
@@ -294,9 +283,10 @@ async function openAddTratamiento(pieza) {
       };
 
       input?.addEventListener('input', () => {
-        productoSeleccionado = null;
-        document.getElementById('swal-odo-prod-id').value = '';
-        if (label) label.textContent = 'Seleccione un tratamiento del catálogo';
+        if (errEl) {
+          errEl.hidden = true;
+          errEl.textContent = '';
+        }
         const q = input.value.trim();
         if (q.length < 2) {
           hide();
@@ -305,51 +295,48 @@ async function openAddTratamiento(pieza) {
         render(filterProductos(q));
       });
 
-      list?.addEventListener('mousedown', (e) => {
+      list?.addEventListener('mousedown', async (e) => {
         const btn = e.target.closest('.paciente-suggestion-item');
         if (!btn) return;
+        e.preventDefault();
+
         const prod = productos.find((p) => p.ID == btn.dataset.id);
         if (!prod) return;
-        productoSeleccionado = prod;
-        document.getElementById('swal-odo-prod-id').value = prod.ID;
-        input.value = prod.DESPROD || prod.CODPROD;
-        document.getElementById('swal-odo-precio').value = prod.PRECIO ?? '';
-        if (label) label.textContent = `${prod.CODPROD} · ${formatPrecio(prod.PRECIO)}`;
-        hide();
+
+        list.querySelectorAll('button').forEach((el) => { el.disabled = true; });
+        if (input) input.disabled = true;
+        if (errEl) {
+          errEl.hidden = true;
+          errEl.textContent = '';
+        }
+
+        try {
+          await api.orders.create({
+            CODPACIENTE: Number(codpacienteActual),
+            PIEZA: pieza,
+            CODPROD: prod.CODPROD,
+            DESPROD: prod.DESPROD,
+            PRECIO: Number(prod.PRECIO ?? 0),
+            FECHA: localDateString(),
+            OBS: null,
+          });
+          agregado = true;
+          SwalTheme.close();
+        } catch (error) {
+          list.querySelectorAll('button').forEach((el) => { el.disabled = false; });
+          if (input) input.disabled = false;
+          if (errEl) {
+            errEl.hidden = false;
+            errEl.textContent = error.message || 'No se pudo agregar el tratamiento';
+          }
+        }
       });
 
       setTimeout(() => input?.focus(), 80);
     },
-    preConfirm: async () => {
-      if (!productoSeleccionado) {
-        Swal.showValidationMessage('Debe seleccionar un tratamiento');
-        return false;
-      }
-      const PRECIO = document.getElementById('swal-odo-precio')?.value;
-      if (PRECIO === '' || PRECIO == null || Number(PRECIO) < 0) {
-        Swal.showValidationMessage('El precio es requerido');
-        return false;
-      }
-      const OBS = sanitizeText(document.getElementById('swal-odo-obs')?.value, { maxLength: 500 });
-
-      try {
-        await api.orders.create({
-          CODPACIENTE: Number(codpacienteActual),
-          PIEZA: pieza,
-          CODPROD: productoSeleccionado.CODPROD,
-          DESPROD: productoSeleccionado.DESPROD,
-          PRECIO: Number(PRECIO),
-          FECHA: localDateString(),
-          OBS: OBS || null,
-        });
-      } catch (error) {
-        Swal.showValidationMessage(error.message);
-        return false;
-      }
-    },
   });
 
-  if (!result.isConfirmed) return;
+  if (!agregado) return;
   await reloadOdontograma();
   await alertSuccess('Tratamiento agregado a la pieza');
 }
@@ -383,12 +370,18 @@ export function renderPacienteOdontograma() {
       </div>
 
       <div class="odo-legend" id="odontogramaLeyenda"></div>
-      <div class="odo-chart" id="odontogramaChart">
-        <p class="text-center text-muted py-4 mb-0">Cargando odontograma...</p>
-      </div>
 
-      <div class="odo-detalle content-card mt-3" id="odontogramaDetalle">
-        <p class="text-muted mb-0">Seleccione una pieza del odontograma para cargar tratamientos o actualizar su estado.</p>
+      <div class="row g-3 odo-layout-row">
+        <div class="col-12 col-lg-8">
+          <div class="odo-chart" id="odontogramaChart">
+            <p class="text-center text-muted py-4 mb-0">Cargando odontograma...</p>
+          </div>
+        </div>
+        <div class="col-12 col-lg-4">
+          <div class="odo-detalle odo-detalle-side" id="odontogramaDetalle">
+            <p class="text-muted mb-0">Seleccione una pieza del odontograma para cargar tratamientos o actualizar su estado.</p>
+          </div>
+        </div>
       </div>
     </div>
   `;

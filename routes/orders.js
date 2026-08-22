@@ -1,5 +1,6 @@
 const express = require('express');
 const { pool } = require('../db/mysql');
+const { normalizePieza } = require('../lib/odontograma-piezas');
 
 const router = express.Router();
 
@@ -54,6 +55,8 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'La pieza es requerida' });
   }
 
+  const piezaNorm = normalizePieza(PIEZA);
+
   if (!CODPROD?.trim()) {
     return res.status(400).json({ error: 'El tratamiento es requerido' });
   }
@@ -70,7 +73,7 @@ router.post('/', async (req, res) => {
         empnit,
         CODPACIENTE,
         FECHA || todayDate(),
-        PIEZA.trim(),
+        piezaNorm,
         CODPROD.trim(),
         DESPROD?.trim() || null,
         PRECIO,
@@ -83,7 +86,7 @@ router.post('/', async (req, res) => {
       EMPNIT: empnit,
       CODPACIENTE,
       FECHA: FECHA || todayDate(),
-      PIEZA: PIEZA.trim(),
+      PIEZA: piezaNorm,
       CODPROD: CODPROD.trim(),
       DESPROD: DESPROD?.trim() || null,
       PRECIO,
@@ -153,6 +156,8 @@ router.put('/:id', async (req, res) => {
     return res.status(400).json({ error: 'La pieza es requerida' });
   }
 
+  const piezaNorm = normalizePieza(PIEZA);
+
   if (PRECIO === undefined || PRECIO === null || PRECIO === '') {
     return res.status(400).json({ error: 'El precio es requerido' });
   }
@@ -173,7 +178,7 @@ router.put('/:id', async (req, res) => {
 
     const [result] = await pool.query(
       `UPDATE orders SET PIEZA = ?, PRECIO = ? WHERE ID = ? AND EMPNIT = ?`,
-      [PIEZA.trim(), PRECIO, req.params.id, empnit]
+      [piezaNorm, PRECIO, req.params.id, empnit]
     );
 
     if (result.affectedRows === 0) {

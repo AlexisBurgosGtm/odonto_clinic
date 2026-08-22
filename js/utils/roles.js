@@ -34,6 +34,8 @@ const MENU_ITEMS = [
 
 const PACIENTE_SUBROUTES = [
 
+  '/pacientes/:codpaciente/detalle',
+
   '/pacientes/:codpaciente/odontograma',
 
   '/pacientes/:codpaciente/tratamientos',
@@ -59,6 +61,8 @@ const ROLE_PATHS = {
 function resolvePacienteSubPath(path) {
 
   if (!path.startsWith('/pacientes/')) return null;
+
+  if (path.includes('/detalle')) return '/pacientes/:codpaciente/detalle';
 
   if (path.includes('/odontograma')) return '/pacientes/:codpaciente/odontograma';
 
@@ -95,7 +99,7 @@ export function canManagePacientes(tipo) {
 }
 
 export function canAddPacienteTratamiento(tipo) {
-  return tipo === 'MEDICO' || tipo === 'SECRETARIA';
+  return tipo === 'GERENTE' || tipo === 'MEDICO' || tipo === 'SECRETARIA';
 }
 
 export function showAgendaTratamientosBtn(tipo) {

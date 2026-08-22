@@ -102,6 +102,7 @@ export const api = {
       const qs = params.toString();
       return request(`/api/agenda/paciente/${codpaciente}/proxima${qs ? `?${qs}` : ''}`);
     },
+    listByPaciente: (codpaciente) => request(`/api/agenda/paciente/${codpaciente}`),
     create: (body) => request('/api/agenda', { method: 'POST', body: JSON.stringify(body) }),
     update: (id, body) =>
       request(`/api/agenda/${id}`, { method: 'PUT', body: JSON.stringify(body) }),

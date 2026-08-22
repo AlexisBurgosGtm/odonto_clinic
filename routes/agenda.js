@@ -69,6 +69,27 @@ router.get('/paciente/:codpaciente/proxima', async (req, res) => {
   }
 });
 
+router.get('/paciente/:codpaciente', async (req, res) => {
+  const empnit = getEmpnit(req, res);
+  if (!empnit) return;
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT a.ID, a.EMPNIT, a.CODPACIENTE, a.CODEMP, a.MOTIVO, a.OBS, a.FECHA, a.FECHA_FIN, a.STATUS,
+              e.EMPLEADO AS MEDICO, e.COLOR
+       FROM agenda a
+       LEFT JOIN empleados e ON e.CODEMP = a.CODEMP AND e.EMPNIT = a.EMPNIT
+       WHERE a.EMPNIT = ? AND a.CODPACIENTE = ?
+       ORDER BY a.FECHA DESC`,
+      [empnit, req.params.codpaciente]
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al listar citas del paciente:', error.message);
+    res.status(500).json({ error: 'Error al obtener el historial de citas' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   const empnit = getEmpnit(req, res);
   if (!empnit) return;

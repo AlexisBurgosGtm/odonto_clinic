@@ -95,7 +95,7 @@ function handleAgendaListClick(e) {
   const tratamientosBtn = e.target.closest('[data-tratamientos]');
   if (tratamientosBtn) {
     e.stopPropagation();
-    window.location.hash = `#/pacientes/${tratamientosBtn.dataset.tratamientos}/odontograma`;
+    window.location.hash = `#/pacientes/${tratamientosBtn.dataset.tratamientos}/detalle`;
     return;
   }
 
@@ -541,7 +541,7 @@ function bindCitaDetalleActions(evento) {
 
   popup.querySelector('[data-tratamientos]')?.addEventListener('click', () => {
     Swal.close();
-    window.location.hash = `#/pacientes/${evento.CODPACIENTE}/odontograma`;
+    window.location.hash = `#/pacientes/${evento.CODPACIENTE}/detalle`;
   });
 }
 
@@ -1220,9 +1220,9 @@ function renderAgendaPacienteActionBtns(evento) {
         type="button"
         class="btn btn-sm btn-outline-info btn-action btn-action-labeled"
         data-tratamientos="${evento.CODPACIENTE}"
-        title="Odontograma del paciente"
+        title="Ver detalles del paciente"
       >
-        <i class="fa-solid fa-teeth me-1"></i>Odontograma
+        <i class="fa-solid fa-folder-open me-1"></i>Detalles
       </button>
     `
     : '';
